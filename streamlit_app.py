@@ -4,6 +4,8 @@ from collections import defaultdict
 from handler import get_cross_sell_recommendations
 from taxonomyHandler import fetch_product_details
 
+# API endpoint
+API_URL = "http://reco-engine-web.prd.meesho.int/api/v1/reco/cross-sell/widget"
 
 # Streamlit UI
 st.title("Cross-Sell Recommendations")
@@ -45,7 +47,7 @@ if submitted:
             unsafe_allow_html=True,
         )
         taxonomyData = fetch_product_details(product_id)
-        if "parent_metadata" not in  data.keys():
+        if "parent_metadata" not in data.keys() or data.get("parent_metadata", {}) is None:
             if  taxonomyData:
                 # Parent Metadata Section
                 st.markdown('<div class="center-content">', unsafe_allow_html=True)
@@ -87,7 +89,11 @@ if submitted:
             st.markdown('<div class="center-content">', unsafe_allow_html=True)
             st.header("Parent Metadata")
             parent_metadata = data.get("parent_metadata", {})
-            st.image(parent_metadata.get("image", ""), width=600)
+            st.markdown(
+                f'<img src="{parent_metadata.get("image", "")}" style="height: 600px; margin-right: 10px;">',
+                unsafe_allow_html=True,
+            )
+            # st.image(parent_metadata.get("image", ""), height=600)
             st.markdown(
                 f'<p><span class="yellow-highlight">Product ID:</span> {parent_metadata.get("product_id", "N/A")}</p>',
                 unsafe_allow_html=True,
