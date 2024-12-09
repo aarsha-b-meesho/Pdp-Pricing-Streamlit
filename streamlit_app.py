@@ -21,7 +21,6 @@ if submitted:
     # Make the API call
     try:
         data = get_cross_sell_recommendations(int(product_id),user_id, int(limit))
-        print(data)
         # Display parent metadata
         st.markdown(
             """
