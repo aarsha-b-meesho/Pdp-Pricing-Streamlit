@@ -16,7 +16,6 @@ with st.form("input_form"):
     product_id = st.text_input("Product ID:", value="32074483")
     limit = st.text_input("Limit:", value="10")
     user_id = st.text_input("UserId:",value="6105390")
-    # user_id = "6105390"  # Predefined user ID for this example
     submitted = st.form_submit_button("Submit")
 
 if submitted:
@@ -93,7 +92,6 @@ if submitted:
                 f'<img src="{parent_metadata.get("image", "")}" style="height: 600px; margin-right: 10px;">',
                 unsafe_allow_html=True,
             )
-            # st.image(parent_metadata.get("image", ""), height=600)
             st.markdown(
                 f'<p><span class="yellow-highlight">Product ID:</span> {parent_metadata.get("product_id", "N/A")}</p>',
                 unsafe_allow_html=True,

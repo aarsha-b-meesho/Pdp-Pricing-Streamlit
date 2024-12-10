@@ -29,9 +29,6 @@ def get_cross_sell_recommendations(product_id, user_id="6105390", limit=10):
     response = requests.post(url, headers=headers, json=payload)
     response.raise_for_status()  # Raise an error for HTTP codes 4xx/5xx
     return response.json()
-    # except requests.exceptions.RequestException as e:
-    #     print(f"An error occurred: {e}")
-    #     return requests.exceptions
 
 
 if __name__=="__main__":

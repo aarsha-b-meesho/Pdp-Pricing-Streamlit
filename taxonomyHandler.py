@@ -30,10 +30,11 @@ def fetch_product_details(product_id):
     else:
         raise Exception(f"Failed to fetch product details. HTTP Status: {response.status_code}, Response: {response.text}")
 
-# Example usage:
-product_id = 389003792
-try:
-    details = fetch_product_details(product_id)
-    print(details)
-except Exception as e:
-    print(e)
+if __name__=="__main__":
+    # Example usage:
+    product_id = 389003792
+    try:
+        details = fetch_product_details(product_id)
+        print(details)
+    except Exception as e:
+        print(e)
