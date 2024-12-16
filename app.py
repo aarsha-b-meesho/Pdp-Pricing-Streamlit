@@ -9,6 +9,13 @@ from feedHandler import  get_cross_sell_feed_with_metadata
 # API endpoint
 API_URL = "http://reco-engine-web.prd.meesho.int/api/v1/reco/cross-sell/widget"
 
+
+st.set_page_config(
+    page_title="Cross-Sell Recommendations",  # Optional: Set the title of the app
+    page_icon="📊",             # Optional: Set an emoji or image as the icon
+    layout="wide",              # Enables full-width layout
+    initial_sidebar_state="expanded"  # Optional: Sidebar state
+)
 # Streamlit UI
 st.title("Cross-Sell Recommendations")
 
@@ -24,6 +31,13 @@ if submitted:
     # Make the API call
     try:
         data = get_cross_sell_recommendations(int(product_id),user_id, int(limit))
+        # print(data)
+        cross_sell_reco = get_cross_sell_feed_with_metadata(int(product_id))
+
+        # SScat based grouping
+        crossSellFeedSScat = defaultdict(list)
+        for each_product in cross_sell_reco:
+            crossSellFeedSScat[each_product["old_sub_sub_category_id"]].append(each_product)
         # Display parent metadata
         st.markdown(
             """
@@ -48,8 +62,9 @@ if submitted:
             unsafe_allow_html=True,
         )
         taxonomyData = fetch_product_details([product_id])
-        if "parent_metadata" not in data.keys() or data.get("parent_metadata", {}) is None:
-            if  taxonomyData and len(taxonomyData)>0:
+        if  taxonomyData and len(taxonomyData)>0:
+            parentCol = st.columns(4)
+            with parentCol[0]:
                 # Parent Metadata Section
                 st.markdown('<div class="center-content">', unsafe_allow_html=True)
                 st.header("Product Details")
@@ -71,8 +86,10 @@ if submitted:
                     f'<p><span class="yellow-highlight">SSCat ID:</span> {taxonomyData[0].get("old_sub_sub_category_id", "N/A")}</p>',
                     unsafe_allow_html=True,
                 )
-
+                st.markdown("</div>", unsafe_allow_html=True)
+            with parentCol[1]:
                 # Display images in a horizontally scrollable gallery
+                st.markdown('<div class="center-content">', unsafe_allow_html=True)
                 st.markdown('<div style="display: flex; overflow-x: auto;">', unsafe_allow_html=True)
                 for image_url in taxonomyData[0].get("product_images", [])[:1]:
                     st.markdown(
@@ -81,48 +98,26 @@ if submitted:
                     )
                 st.markdown("</div>", unsafe_allow_html=True)
 
-                st.markdown("</div>", unsafe_allow_html=True)
-
+            st.markdown("</div>", unsafe_allow_html=True)
+        if "parent_metadata" not in data.keys() or data.get("parent_metadata", {}) is None:
             st.markdown("NO CROSS SELL RECOMMENDATION FOR THIS PRODUCT ID")
 
         else:
-            # Parent Metadata
-            st.markdown('<div class="center-content">', unsafe_allow_html=True)
-            st.header("Parent Metadata")
-            parent_metadata = data.get("parent_metadata", {})
-            st.markdown(
-                f'<img src="{parent_metadata.get("image", "")}" style="height: 600px; margin-right: 10px;">',
-                unsafe_allow_html=True,
-            )
-            st.markdown(
-                f'<p><span class="yellow-highlight">Product ID:</span> {parent_metadata.get("product_id", "N/A")}</p>',
-                unsafe_allow_html=True,
-            )
-            st.markdown(
-                f'<p><span class="yellow-highlight">Catalog ID:</span> {parent_metadata.get("catalog_id", "N/A")}</p>',
-                unsafe_allow_html=True,
-            )
-            if taxonomyData:
-                st.markdown(
-                    f'<p><span class="yellow-highlight">SSCat Name:</span> {taxonomyData[0].get("sscat_name", "N/A")}</p>',
-                    unsafe_allow_html=True,
-                )
-            st.markdown(
-                f'<p><span class="yellow-highlight">SSCat ID:</span> {parent_metadata.get("sscat_id", "N/A")}</p>',
-                unsafe_allow_html=True,
-            )
-            st.markdown("</div>", unsafe_allow_html=True)
-
             # Group recommendations by sscat_name
+            isDuplicateWidgetFeedComing = False
             recommendations = data.get("recommendations", [])
             grouped_recommendations = defaultdict(list)
             sscat_name_2_id_mapping = defaultdict(str)
             for item in recommendations:
                 sscat_name_2_id_mapping[item["sscat_name"]] = item["sscat_id"]
                 grouped_recommendations[item["sscat_name"]].append(item)
+                if len(grouped_recommendations[item["sscat_name"]])>1:
+                    isDuplicateWidgetFeedComing = True
 
             # Display recommendations grouped by SSCat
             st.header("Widget Recommendations")
+            if isDuplicateWidgetFeedComing:
+                st.markdown("Duplicate Products Coming in Widget Feed")
             for sscat_name, products in grouped_recommendations.items():
                 st.markdown(
                     f"""
@@ -135,9 +130,10 @@ if submitted:
                     """,
                     unsafe_allow_html=True
                 )
-                cols = st.columns(len(products))
-                for idx, product in enumerate(products):
-                    with cols[idx]:
+                cols = st.columns(3)
+                # On left column we will show product data , but on right side we will show feed data based on crossSellFeedSScat["
+                for idx, product in enumerate(products[:1]):
+                    with cols[0]:
                         st.markdown('<div class="product-container">', unsafe_allow_html=True)
                         st.image(product["widget_metadata"]["image"], width=250)
                         st.markdown(
@@ -153,17 +149,50 @@ if submitted:
                             unsafe_allow_html=True,
                         )
                         st.markdown("</div>", unsafe_allow_html=True)
+                    with cols[1]:
+                        cross_sell_data = crossSellFeedSScat[product["sscat_id"]]
+                        # Display Cross-Sell Products in Rows of 4
+                        for i in range(0, len(cross_sell_data), 4):
+                            row = st.columns(2)  # Create 4 columns for each row
+                            for col, item in zip(row, cross_sell_data[i:i + 2]):
+                                with col:
+                                    st.markdown(f"""
+                                            <figure style="text-align: center;">
+                                                <img src="{item["product_images"][0]}" style="height: 200px; margin-right: 10px;">
+                                                <figcaption style="margin-top: 5px; font-size: 14px; color: gray;">{item['catalog_name']}</figcaption>
+                                            </figure>
+                                            """,unsafe_allow_html=True,
+                                                )
+                                    st.markdown(f"Product ID: {item['product_id']}")
+                                    st.markdown(f"Catalog ID: {item['catalog_id']}")
+                    with cols[2]:
+                        cross_sell_data = crossSellFeedSScat[product["sscat_id"]]
+                        # Display Cross-Sell Products in Rows of 4
+                        for i in range(0, len(cross_sell_data), 4):
+                            row = st.columns(2)  # Create 4 columns for each row
+                            for col, item in zip(row, cross_sell_data[i+2:i + 4]):
+                                with col:
+                                    st.markdown(f"""
+                                            <figure style="text-align: center;">
+                                                <img src="{item["product_images"][0]}" style="height: 200px; margin-right: 10px;">
+                                                <figcaption style="margin-top: 5px; font-size: 14px; color: gray;">{item['catalog_name']}</figcaption>
+                                            </figure>
+                                            """,unsafe_allow_html=True,
+                                                )
+                                    st.markdown(f"Product ID: {item['product_id']}")
+                                    st.markdown(f"Catalog ID: {item['catalog_id']}")
+                        # print(product)
+                        # print(crossSellFeedSScat[product["sscat_id"]])
 
-            cross_sell_reco = get_cross_sell_feed_with_metadata(int(product_id))
             # Streamlit layout
             # time.sleep(2)
             st.header("Cross Sell Feed Recommendations")
 
             #     # Display products in rows of 2
-            for i in range(0, len(cross_sell_reco), 2):
-                cols = st.columns(2)  # Create two columns
+            for i in range(0, len(cross_sell_reco), 5):
+                cols = st.columns(5)  # Create two columns
                 st.markdown('<div style="border: 1px solid #ccc; padding: 5px; margin-bottom: 10px;">', unsafe_allow_html=True)
-                for col, product in zip(cols, cross_sell_reco[i:i + 2]):
+                for col, product in zip(cols, cross_sell_reco[i:i + 5]):
                     with col:
 
                         st.markdown(f"""

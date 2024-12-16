@@ -1,7 +1,7 @@
 import  requests
 from taxonomyHandler import fetch_product_details
 
-def get_cross_sell_feed_recommendations(product_id,user_id="6105390",limit=10):
+def get_cross_sell_feed_recommendations(product_id,user_id="6105390",limit=30):
     url = "http://reco-engine-web.prd.meesho.int/api/v1/reco/cross-sell/feed"
     productMetaData = fetch_product_details([product_id])
     headers = {
@@ -20,6 +20,7 @@ def get_cross_sell_feed_recommendations(product_id,user_id="6105390",limit=10):
     }
     # try:
     response = requests.post(url, headers=headers, json=payload)
+    # print(response.json())
     response.raise_for_status()  # Raise an error for HTTP codes 4xx/5xx
     return response.json()
 
