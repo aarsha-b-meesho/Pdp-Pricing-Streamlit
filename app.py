@@ -201,7 +201,7 @@ if submitted:
                                     <figcaption style="margin-top: 5px; font-size: 14px; color: gray;">{product['catalog_name']}</figcaption>
                                 </figure>
                                 """,unsafe_allow_html=True,
-                        )
+                                    )
                         st.markdown(
                             f'<p><span class="yellow-highlight-light">Product Id:</span> {product["product_id"]}</p>',
                             unsafe_allow_html=True,
