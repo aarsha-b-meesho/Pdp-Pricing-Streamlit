@@ -35,14 +35,20 @@ def fetch_product_details(product_id_list):
             if idx is not None:
                 result[idx]["product_id"] = each_product_from_taxonomy["id"]
                 result[idx]["product_images"] = each_product_from_taxonomy["images"]
-        return result
+        if len(product_id_list)==1:
+            return result
+        result_pid_to_index = {result[i]['product_id']:i for i in range(len(result))}
+        reordered_products = []
+        for product_id in product_id_list:
+            if product_id in  result_pid_to_index:
+                reordered_products.append(result[result_pid_to_index[product_id]])
+        return reordered_products
     else:
         raise Exception(f"Failed to fetch product details. HTTP Status: {response.status_code}, Response: {response.text}")
-# [352292258, 405099957, 428269549, 414147213, 372416880, 357020004, 119656115, 170425950, 191890524, 295954925, 114300299, 100537408, 370491889, 294221102, 309228505, 406169195, 397253798, 297261478, 234954124, 417043475, 403567197, 371223663, 250850042]
+
 if __name__=="__main__":
     # Example usage:
-    product_id = [377791243]
-    product_id = [352292258, 405099957, 428269549, 414147213, 372416880, 357020004, 119656115, 170425950, 191890524, 295954925, 114300299, 100537408, 370491889, 294221102, 309228505, 406169195, 397253798, 297261478, 234954124, 417043475, 403567197, 371223663, 250850042]
+    product_id = [295954925]
     try:
         details = fetch_product_details(product_id)
         print(details)
