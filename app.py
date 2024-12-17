@@ -31,13 +31,13 @@ if submitted:
     # Make the API call
     try:
         data = get_cross_sell_recommendations(int(product_id),user_id, int(limit))
-        # print(data)
         cross_sell_reco = get_cross_sell_feed_with_metadata(int(product_id))
 
         # SScat based grouping
         crossSellFeedSScat = defaultdict(list)
-        for each_product in cross_sell_reco:
-            crossSellFeedSScat[each_product["old_sub_sub_category_id"]].append(each_product)
+        if cross_sell_reco is not Exception:
+            for each_product in cross_sell_reco:
+                crossSellFeedSScat[each_product["old_sub_sub_category_id"]].append(each_product)
         # Display parent metadata
         st.markdown(
             """
@@ -56,6 +56,11 @@ if submitted:
                 .center-content img {
                     margin: auto;
                     display: block;
+                }
+                .bordered-column{
+                    margin: -10px,
+                    padding: 0,
+                    background-color: red
                 }
             </style>
             """,
@@ -149,40 +154,46 @@ if submitted:
                             unsafe_allow_html=True,
                         )
                         st.markdown("</div>", unsafe_allow_html=True)
+                    cross_sell_data = crossSellFeedSScat[product["sscat_id"]]
+                    feed_len1 = 2*(len(cross_sell_data)//4 )
+                    if len(cross_sell_data)%4 ==1 or len(cross_sell_data)%4 ==2:
+                        feed_len1+=len(cross_sell_data)%4
+                    if len(cross_sell_data)%4 ==3:
+                        feed_len1+=2
+                    cross_sell_feed_screen1 = cross_sell_data[:feed_len1]
+                    cross_sell_feed_screen2 = cross_sell_data[feed_len1:]
                     with cols[1]:
-                        cross_sell_data = crossSellFeedSScat[product["sscat_id"]]
-                        # Display Cross-Sell Products in Rows of 4
-                        for i in range(0, len(cross_sell_data), 4):
-                            row = st.columns(2)  # Create 4 columns for each row
-                            for col, item in zip(row, cross_sell_data[i:i + 2]):
+                        # st.markdown('<div class="bordered-column">', unsafe_allow_html=True)
+                        # Display Cross-Sell Products in Rows of 2
+                        for i in range(0, len(cross_sell_feed_screen1), 2):
+                            row = st.columns(2)  # Create 2 columns for each row
+                            for col, item in zip(row, cross_sell_feed_screen1[i:i + 2]):
                                 with col:
                                     st.markdown(f"""
                                             <figure style="text-align: center;">
-                                                <img src="{item["product_images"][0]}" style="height: 200px; margin-right: 10px;">
+                                                <img src="{item["product_images"][0]}" style="height: 250px; margin-right: 10px;">
                                                 <figcaption style="margin-top: 5px; font-size: 14px; color: gray;">{item['catalog_name']}</figcaption>
                                             </figure>
                                             """,unsafe_allow_html=True,
                                                 )
                                     st.markdown(f"Product ID: {item['product_id']}")
                                     st.markdown(f"Catalog ID: {item['catalog_id']}")
+                        # st.markdown('</div>', unsafe_allow_html=True)
                     with cols[2]:
-                        cross_sell_data = crossSellFeedSScat[product["sscat_id"]]
-                        # Display Cross-Sell Products in Rows of 4
-                        for i in range(0, len(cross_sell_data), 4):
-                            row = st.columns(2)  # Create 4 columns for each row
-                            for col, item in zip(row, cross_sell_data[i+2:i + 4]):
+                        # Display Cross-Sell Products in Rows of 2
+                        for i in range(0, len(cross_sell_feed_screen2), 2):
+                            row = st.columns(2)  # Create 2 columns for each row
+                            for col, item in zip(row, cross_sell_feed_screen2[i:i + 2]):
                                 with col:
                                     st.markdown(f"""
                                             <figure style="text-align: center;">
-                                                <img src="{item["product_images"][0]}" style="height: 200px; margin-right: 10px;">
+                                                <img src="{item["product_images"][0]}" style="height: 250px; margin-right: 10px;">
                                                 <figcaption style="margin-top: 5px; font-size: 14px; color: gray;">{item['catalog_name']}</figcaption>
                                             </figure>
                                             """,unsafe_allow_html=True,
                                                 )
                                     st.markdown(f"Product ID: {item['product_id']}")
                                     st.markdown(f"Catalog ID: {item['catalog_id']}")
-                        # print(product)
-                        # print(crossSellFeedSScat[product["sscat_id"]])
 
             # Streamlit layout
             # time.sleep(2)
