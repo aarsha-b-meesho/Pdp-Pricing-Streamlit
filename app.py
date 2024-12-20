@@ -5,6 +5,7 @@ from collections import defaultdict
 from widgetHandler import get_cross_sell_recommendations
 from taxonomyHandler import fetch_product_details
 from feedHandler import  get_cross_sell_feed_with_metadata
+from pdpFallback import pdpFallbackThread
 
 # API endpoint
 API_URL = "http://reco-engine-web.prd.meesho.int/api/v1/reco/cross-sell/widget"
@@ -19,6 +20,7 @@ st.set_page_config(
 # Streamlit UI
 st.title("Cross-Sell Recommendations")
 
+fallback_response = st.sidebar.checkbox("Enable Fallback Response", value=False)
 # Input form for user
 with st.form("input_form"):
     st.write("Enter Product Details:")
@@ -31,13 +33,21 @@ if submitted:
     # Make the API call
     try:
         data = get_cross_sell_recommendations(int(product_id),user_id, int(limit))
+        cross_sell_reco = []
+
         cross_sell_reco = get_cross_sell_feed_with_metadata(int(product_id))
 
         # SScat based grouping
         crossSellFeedSScat = defaultdict(list)
-        if cross_sell_reco is not Exception:
-            for each_product in cross_sell_reco:
-                crossSellFeedSScat[each_product["old_sub_sub_category_id"]].append(each_product)
+        if fallback_response==False:
+            if cross_sell_reco is not Exception:
+                for each_product in cross_sell_reco:
+                    crossSellFeedSScat[each_product["old_sub_sub_category_id"]].append(each_product)
+        if fallback_response:
+            pdpFallbackRecos = pdpFallbackThread(data.get("recommendations",[]))
+            for each_widget in data.get("recommendations", []):
+                crossSellFeedSScat[each_widget["sscat_id"]] = pdpFallbackRecos[each_widget["product_id"]]
+
         # Display parent metadata
         st.markdown(
             """

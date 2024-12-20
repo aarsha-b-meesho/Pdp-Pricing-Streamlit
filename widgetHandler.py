@@ -33,7 +33,7 @@ def get_cross_sell_recommendations(product_id, user_id="6105390", limit=10):
 
 if __name__=="__main__":
     # Example usage
-    product_id = 357779479
+    product_id = 326765744
     response = get_cross_sell_recommendations(product_id)
 
     if response:
