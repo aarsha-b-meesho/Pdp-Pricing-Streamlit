@@ -1,11 +1,9 @@
 import streamlit as st
 import requests
-import time
 from collections import defaultdict
 from widgetHandler import get_cross_sell_recommendations
 from taxonomyHandler import fetch_product_details
-from feedHandler import  get_cross_sell_feed_with_metadata
-from pdpFallback import pdpFallbackThread
+from feedHandler import  get_cross_sell_feed_with_metadata_from_widget
 
 # API endpoint
 API_URL = "http://reco-engine-web.prd.meesho.int/api/v1/reco/cross-sell/widget"
@@ -20,7 +18,7 @@ st.set_page_config(
 # Streamlit UI
 st.title("Cross-Sell Recommendations")
 
-fallback_response = st.sidebar.checkbox("Enable Fallback Response", value=False)
+# fallback_response = st.sidebar.checkbox("Enable Fallback Response", value=False)
 # Input form for user
 with st.form("input_form"):
     st.write("Enter Product Details:")
@@ -33,20 +31,18 @@ if submitted:
     # Make the API call
     try:
         data = get_cross_sell_recommendations(int(product_id),user_id, int(limit))
+        # print(data)
         cross_sell_reco = []
 
-        cross_sell_reco = get_cross_sell_feed_with_metadata(int(product_id))
+        cross_sell_reco = get_cross_sell_feed_with_metadata_from_widget(data,user_id)
+        # print(cross_sell_reco)
+        feedSource = data["feed_source"]
 
         # SScat based grouping
         crossSellFeedSScat = defaultdict(list)
-        if fallback_response==False:
-            if cross_sell_reco is not Exception:
-                for each_product in cross_sell_reco:
-                    crossSellFeedSScat[each_product["old_sub_sub_category_id"]].append(each_product)
-        if fallback_response:
-            pdpFallbackRecos = pdpFallbackThread(data.get("recommendations",[]))
-            for each_widget in data.get("recommendations", []):
-                crossSellFeedSScat[each_widget["sscat_id"]] = pdpFallbackRecos[each_widget["product_id"]]
+        if cross_sell_reco is not Exception:
+            for each_product in cross_sell_reco:
+                crossSellFeedSScat[each_product["old_sub_sub_category_id"]].append(each_product)
 
         # Display parent metadata
         st.markdown(
@@ -112,6 +108,18 @@ if submitted:
                         unsafe_allow_html=True,
                     )
                 st.markdown("</div>", unsafe_allow_html=True)
+            with parentCol[3]:
+                # Parent Metadata Section
+                st.markdown('<div class="center-content">', unsafe_allow_html=True)
+                st.header("Feed Source")
+
+                # Display catalog name and ID
+                st.markdown(
+                    f'<p><span class="yellow-highlight" style="font-size: 25px;">{feedSource}<span></p>',
+                    unsafe_allow_html=True,
+                )
+                st.markdown("</div>", unsafe_allow_html=True)
+
 
             st.markdown("</div>", unsafe_allow_html=True)
         if "parent_metadata" not in data.keys() or data.get("parent_metadata", {}) is None:
