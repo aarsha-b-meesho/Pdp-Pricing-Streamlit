@@ -49,11 +49,11 @@ if submitted:
             """
             <style>
                 .yellow-highlight {
-                    color: yellow;
+                    color: #2337C6;
                     font-weight: bold;
                 }
                 .yellow-highlight-light {
-                    color: #FFFFD3;
+                    color: #4CC9F0;
                     font-weight: bold;
                 }v
                 .center-content {
