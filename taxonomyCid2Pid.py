@@ -41,6 +41,6 @@ def get_hero_products(catalog_ids):
 if __name__=="__main__":
     # Example usage
     catalog_ids_input = [112569077, 126277801, 27909875, 129297990, 117816617, 1401871, 117892257, 118998546, 121924211, 78522112, 129385822, 102528547, 102093840, 103766416, 94227719, 116700745, 91693246, 72317847, 125105906, 129524223]
-    catalog_ids_input = [71585]
+    catalog_ids_input = [149160085]
     hero_products = get_hero_products(catalog_ids_input)
     print("Hero Products:", hero_products)

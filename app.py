@@ -23,6 +23,7 @@ st.title("Cross-Sell Recommendations")
 with st.form("input_form"):
     st.write("Enter Product Details:")
     product_id = st.text_input("Product ID:", value="326765744")
+    screen = st.selectbox("Select Screen:", ["place_order", "order_details"])
     limit = st.text_input("Limit:", value="10")
     user_id = st.text_input("UserId:",value="6105390")
     submitted = st.form_submit_button("Submit")
@@ -30,7 +31,7 @@ with st.form("input_form"):
 if submitted:
     # Make the API call
     try:
-        data = get_cross_sell_recommendations(int(product_id),user_id, int(limit))
+        data = get_cross_sell_recommendations(int(product_id),user_id, int(limit),screen)
         # print(data)
         cross_sell_reco = []
 

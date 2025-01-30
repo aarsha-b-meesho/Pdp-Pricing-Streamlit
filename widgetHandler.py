@@ -1,6 +1,6 @@
 import requests
 
-def get_cross_sell_recommendations(product_id, user_id="6105390", limit=10):
+def get_cross_sell_recommendations(product_id, user_id="6105390", limit=10, screen="place_order"):
     """
     Fetch cross-sell recommendations for a given product ID.
 
@@ -12,17 +12,18 @@ def get_cross_sell_recommendations(product_id, user_id="6105390", limit=10):
     Returns:
         dict: The JSON response from the API.
     """
-    url = "http://reco-engine-web.int.meesho.int/api/v1/reco/cross-sell/widget"
+    url = "http://reco-engine-web.prd.meesho.int/api/v1/reco/cross-sell/widget"
     headers = {
         "Content-Type": "application/json"
     }
     payload = {
         "limit": limit,
         "metadata": {
-            "screen": "single_product",
+            "screen": screen,
             "product_ids": [product_id]
         },
-        "user_id": user_id
+        "user_id": user_id,
+        "tenant": "CROSS_SELL"
     }
 
     # try:

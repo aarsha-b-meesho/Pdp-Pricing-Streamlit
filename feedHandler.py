@@ -3,8 +3,8 @@ from taxonomyHandler import fetch_product_details
 from concurrent.futures import ThreadPoolExecutor
 
 
-def get_cross_sell_feed_recommendations(parent_product_id,clicked_product,clicked_sscat,user_id,limit=16):
-    url = "http://reco-engine-web.int.meesho.int/api/v1/reco/cross-sell/feed"
+def get_cross_sell_feed_recommendations(parent_product_id,clicked_product,clicked_sscat,user_id,limit=16,screen="place_order"):
+    url = "http://reco-engine-web.prd.meesho.int/api/v1/reco/cross-sell/feed"
     headers = {
         "Content-Type": "application/json"
     }
@@ -15,8 +15,9 @@ def get_cross_sell_feed_recommendations(parent_product_id,clicked_product,clicke
             "sscat_id": clicked_sscat
         },
         "limit": limit,
-        "screen": "place_order",
-        "user_id": str(user_id)
+        "screen": screen,
+        "user_id": str(user_id),
+        "tenant": "CROSS_SELL"
     }
     # try:
     response = requests.post(url, headers=headers, json=payload)
@@ -24,9 +25,9 @@ def get_cross_sell_feed_recommendations(parent_product_id,clicked_product,clicke
     return response.json()
 
 
-def get_cross_sell_feed_with_metadata(parent_product_id,clicked_pid,clicked_sscat_id,user_id):
+def get_cross_sell_feed_with_metadata(parent_product_id,clicked_pid,clicked_sscat_id,user_id,screen="place_order"):
     try:
-        cross_sell_feed = get_cross_sell_feed_recommendations(parent_product_id,clicked_pid,clicked_sscat_id,user_id)
+        cross_sell_feed = get_cross_sell_feed_recommendations(parent_product_id,clicked_pid,clicked_sscat_id,user_id,16,screen)
         # print("cross_sell_feed = get_cross_sell_feed_recommendations(product_id)",cross_sell_feed)
         if "entities" in cross_sell_feed:
             metadata = fetch_product_details(cross_sell_feed["entities"])
@@ -35,9 +36,9 @@ def get_cross_sell_feed_with_metadata(parent_product_id,clicked_pid,clicked_ssca
     except Exception as e:
         print("Error while fetching cross_sell_feed_recommendations")
 
-def get_cross_sell_feed_with_metadata_from_widget_response(recommendations, parent_product_id, user_id):
+def get_cross_sell_feed_with_metadata_from_widget_response(recommendations, parent_product_id, user_id,screen="place_order"):
     input_data_for_each_sscat = [
-        [parent_product_id, each_tiles["product_id"], each_tiles["sscat_id"], user_id]
+        [parent_product_id, each_tiles["product_id"], each_tiles["sscat_id"], user_id,screen]
         for each_tiles in recommendations
     ]
 
@@ -55,10 +56,10 @@ def get_cross_sell_feed_with_metadata_from_widget_response(recommendations, pare
 
     return merged_response
 
-def get_cross_sell_feed_with_metadata_from_widget(widget_response,user_id):
+def get_cross_sell_feed_with_metadata_from_widget(widget_response,user_id,screen="place_order"):
     recommendations = widget_response["recommendations"]
     parent_pid = widget_response["parent_metadata"]["product_id"]
-    return get_cross_sell_feed_with_metadata_from_widget_response(recommendations,parent_pid,user_id)
+    return get_cross_sell_feed_with_metadata_from_widget_response(recommendations,parent_pid,user_id,screen)
 
 
 if __name__=="__main__":
