@@ -3,35 +3,66 @@ import requests
 from collections import defaultdict
 from widgetHandler import get_cross_sell_recommendations
 from taxonomyHandler import fetch_product_details
-from feedHandler import  get_cross_sell_feed_with_metadata_from_widget
+from feedHandler import get_cross_sell_feed_with_metadata_from_widget
 
 # API endpoint
 API_URL = "http://reco-engine-web.prd.meesho.int/api/v1/reco/cross-sell/widget"
 
-
 st.set_page_config(
-    page_title="Cross-Sell Recommendations",  # Optional: Set the title of the app
-    page_icon="📊",             # Optional: Set an emoji or image as the icon
-    layout="wide",              # Enables full-width layout
-    initial_sidebar_state="expanded"  # Optional: Sidebar state
+    page_title="Cross-Sell Recommendations",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
+
 # Streamlit UI
 st.title("Cross-Sell Recommendations")
 
-# fallback_response = st.sidebar.checkbox("Enable Fallback Response", value=False)
 # Input form for user
 with st.form("input_form"):
     st.write("Enter Product Details:")
-    product_id = st.text_input("Product ID:", value="326765744")
-    screen = st.selectbox("Select Screen:", ["place_order", "order_details"])
-    limit = st.text_input("Limit:", value="10")
-    user_id = st.text_input("UserId:",value="6105390")
-    submitted = st.form_submit_button("Submit")
+
+    # First row
+    col1, col2 = st.columns(2)
+    with col1:
+        catalogOrProduct = st.selectbox("Product/Catalog", ["Product-Id", "Catalog-Id"])
+    with col2:
+        product_id = st.text_input("ID", value="326765744")
+
+    # Second row
+    col3, col4 = st.columns(2)
+    with col3:
+        screen = st.selectbox("Select Screen:", ["place_order", "order_details"])
+    with col4:
+        limit = st.text_input("Limit:", value="6")
+
+    # Third row (Fixing alignment)
+    col5, col6 = st.columns(2)
+    with col5:
+        user_id = st.text_input("UserId:", value="390374537")
+
+    with col6:
+        st.write("")  # Placeholder to align the button properly
+        submitted = st.markdown(
+            """<style>
+                div.stButton > button {
+                    width: 200%;
+                    height: 3em;
+                    font-size: 1.2em;
+                    font-weight: bold;
+                }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+        submitted = st.form_submit_button("Submit")
+
+
 
 if submitted:
     # Make the API call
     try:
-        data = get_cross_sell_recommendations(int(product_id),user_id, int(limit),screen)
+        data = get_cross_sell_recommendations(int(product_id),user_id, int(limit),screen,catalogOrProduct=="Product-Id")
         # print(data)
         cross_sell_reco = []
 
@@ -73,7 +104,11 @@ if submitted:
             """,
             unsafe_allow_html=True,
         )
-        taxonomyData = fetch_product_details([product_id])
+        if catalogOrProduct=="Product-Id":
+            taxonomyData = fetch_product_details([product_id])
+        else:
+            if data.get('parent_metadata',0)!=0 and data.get('parent_metadata').get("product_id",0)!=0:
+                taxonomyData = fetch_product_details([data.get('parent_metadata').get("product_id")])
         if  taxonomyData and len(taxonomyData)>0:
             parentCol = st.columns(4)
             with parentCol[0]:
@@ -140,6 +175,30 @@ if submitted:
 
             # Display recommendations grouped by SSCat
             st.header("Widget Recommendations")
+            colForHorizontalWidget = st.columns(6)
+            for i in range(min(6,len(data.get("recommendations",[])))):
+                with colForHorizontalWidget[i]:
+                    st.markdown(f"""
+                                <figure style="text-align: center;">
+                                    <img src="{data.get("recommendations")[i]["widget_metadata"]["image"]}" style="height: 250px; margin-right: 10px;">
+                                    <figcaption style="margin-top: 5px; font-size: 14px; color: gray;">{data.get("recommendations")[i]["sscat_name"]}</figcaption>
+                                </figure>
+                                """,unsafe_allow_html=True,
+                                )
+                    st.markdown(
+                        f'<p><span class="yellow-highlight-light">Product Id:</span> {data.get("recommendations")[i]["product_id"]}</p>',
+                        unsafe_allow_html=True,
+                    )
+                    st.markdown(
+                        f'<p><span class="yellow-highlight-light">Catalog Id:</span> {data.get("recommendations")[i]["catalog_id"]}</p>',
+                        unsafe_allow_html=True,
+                    )
+                    st.markdown(
+                        f'<p><span class="yellow-highlight-light">Sscat Id:</span> {data.get("recommendations")[i]["sscat_id"]}</p>',
+                        unsafe_allow_html=True,
+                    )
+                    st.markdown('</div>', unsafe_allow_html=True)
+
             if isDuplicateWidgetFeedComing:
                 st.markdown("Duplicate Products Coming in Widget Feed")
             for sscat_name, products in grouped_recommendations.items():

@@ -1,6 +1,6 @@
 import requests
 
-def get_cross_sell_recommendations(product_id, user_id="6105390", limit=10, screen="place_order"):
+def get_cross_sell_recommendations(product_id, user_id="6105390", limit=10, screen="place_order",isProductId=True):
     """
     Fetch cross-sell recommendations for a given product ID.
 
@@ -16,15 +16,27 @@ def get_cross_sell_recommendations(product_id, user_id="6105390", limit=10, scre
     headers = {
         "Content-Type": "application/json"
     }
-    payload = {
-        "limit": limit,
-        "metadata": {
-            "screen": screen,
-            "product_ids": [product_id]
-        },
-        "user_id": user_id,
-        "tenant": "CROSS_SELL"
-    }
+    if isProductId:
+        payload = {
+            "limit": limit,
+            "metadata": {
+                "screen": screen,
+                "product_ids": [product_id]
+            },
+            "user_id": user_id,
+            "tenant": "CROSS_SELL"
+        }
+    else:
+        payload = {
+            "limit": limit,
+            "metadata": {
+                "screen": screen,
+                "catalog_ids": [product_id]
+            },
+            "user_id": user_id,
+            "tenant": "CROSS_SELL"
+        }
+
 
     # try:
     response = requests.post(url, headers=headers, json=payload)
