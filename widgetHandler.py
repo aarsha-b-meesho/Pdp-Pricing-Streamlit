@@ -12,7 +12,7 @@ def get_cross_sell_recommendations(product_id, user_id="6105390", limit=10, scre
     Returns:
         dict: The JSON response from the API.
     """
-    url = "http://reco-engine-web.prd.meesho.int/api/v1/reco/cross-sell/widget"
+    url = "http://cross-sell-web.prd.meesho.int/api/v1/reco/cross-sell/widget"
     headers = {
         "Content-Type": "application/json"
     }

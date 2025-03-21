@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 
 def get_cross_sell_feed_recommendations(parent_product_id,clicked_product,clicked_sscat,user_id,limit=16,screen="place_order"):
-    url = "http://reco-engine-web.prd.meesho.int/api/v1/reco/cross-sell/feed"
+    url = "http://cross-sell-web.prd.meesho.int/api/v1/reco/cross-sell/feed"
     headers = {
         "Content-Type": "application/json"
     }
