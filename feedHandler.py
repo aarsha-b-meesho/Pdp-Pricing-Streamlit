@@ -17,7 +17,7 @@ def get_cross_sell_feed_recommendations(parent_product_id,clicked_product,clicke
         "limit": limit,
         "screen": screen,
         "user_id": str(user_id),
-        "tenant": "CROSS_SELL"
+        "feedContext": "CROSS_SELL"
     }
     # try:
     response = requests.post(url, headers=headers, json=payload)

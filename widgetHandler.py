@@ -34,7 +34,7 @@ def get_cross_sell_recommendations(product_id, user_id="6105390", limit=10, scre
                 "catalog_ids": [product_id]
             },
             "user_id": user_id,
-            "tenant": "CROSS_SELL"
+            "tenantContext": "CROSS_SELL"
         }
 
 
