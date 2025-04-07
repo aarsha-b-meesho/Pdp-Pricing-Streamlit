@@ -58,8 +58,10 @@ def get_cross_sell_feed_with_metadata_from_widget_response(recommendations, pare
 
 def get_cross_sell_feed_with_metadata_from_widget(widget_response,user_id,screen="place_order"):
     recommendations = widget_response["recommendations"]
-    parent_pid = widget_response["parent_metadata"]["product_id"]
-    return get_cross_sell_feed_with_metadata_from_widget_response(recommendations,parent_pid,user_id,screen)
+    if "parent_metadata" in widget_response.keys() and widget_response["parent_metadata"]:
+        parent_pid = widget_response["parent_metadata"]["product_id"]
+        return get_cross_sell_feed_with_metadata_from_widget_response(recommendations,parent_pid,user_id,screen)
+    return []
 
 
 if __name__=="__main__":
