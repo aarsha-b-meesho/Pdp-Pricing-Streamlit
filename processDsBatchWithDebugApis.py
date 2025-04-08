@@ -21,6 +21,7 @@ def process_catalogs_with_filters(
         sscat_mapping: str,
         cvf_enabled: str,
         oos_enabled: str,
+        userId :str
 ) -> dict:
     ds_batch_response = get_ds_batch_data(int(parent_catalog_id), key_version)
     ds_batch_catalogs = ds_batch_response.get("data", {}).get("complementaryCatalogs", [])
@@ -28,7 +29,7 @@ def process_catalogs_with_filters(
 
     cvf_response,oos_response = [],[]
     if cvf_enabled.lower() == "yes":
-        cvf_response = get_cvf_filtered_catalogs(ds_batch_catalogs, user_id="6567887")
+        cvf_response = get_cvf_filtered_catalogs(ds_batch_catalogs, userId)
         catalog_ids = apply_cvf_filter(catalog_ids, cvf_response)
         cvf_response = list(set(cvf_response.get("data", {}).get("cvfFilteredCatalogs", [])))
 
@@ -139,8 +140,8 @@ def convert_to_flattened_feed_response(ordered_grouped_catalogs: list) -> list:
     return flattened_response
 
 
-def get_widget_and_feed_response(parent_catalog_id,key_version,sscat_mapping,cvf_enabled,oos_enabled,minProductForLandingPage):
-    debugResponse = process_catalogs_with_filters(parent_catalog_id,key_version,sscat_mapping,cvf_enabled,oos_enabled)
+def get_widget_and_feed_response(parent_catalog_id,key_version,sscat_mapping,cvf_enabled,oos_enabled,minProductForLandingPage,userId):
+    debugResponse = process_catalogs_with_filters(parent_catalog_id,key_version,sscat_mapping,cvf_enabled,oos_enabled,userId)
     widgetResponse = format_grouped_widget_response(debugResponse["grouped_catalogs"],debugResponse["metadata"][parent_catalog_id],int(minProductForLandingPage))
     feedResponse = convert_to_flattened_feed_response(debugResponse["grouped_catalogs"])
     return (widgetResponse,feedResponse,debugResponse)
