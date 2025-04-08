@@ -79,11 +79,11 @@ def process_catalogs_with_filters(
         "oos_filtered_catalogs":list(set(ds_batch_catalogs) - set(oos_response)) if oos_enabled.lower() == "yes" else [],
     }
 
-def format_grouped_widget_response(ordered_grouped_catalogs: list, parent_metadata: dict) -> dict:
+def format_grouped_widget_response(ordered_grouped_catalogs: list, parent_metadata: dict, minProductForLandingPage: int) -> dict:
     recommendations = []
 
     for group in ordered_grouped_catalogs:
-        if not group["catalogs"]:
+        if not group["catalogs"] or len(group["catalogs"])<minProductForLandingPage:
             continue
 
         catalog = group["catalogs"][0]  # Pick only the first one
@@ -139,9 +139,9 @@ def convert_to_flattened_feed_response(ordered_grouped_catalogs: list) -> list:
     return flattened_response
 
 
-def get_widget_and_feed_response(parent_catalog_id,key_version,sscat_mapping,cvf_enabled,oos_enabled):
+def get_widget_and_feed_response(parent_catalog_id,key_version,sscat_mapping,cvf_enabled,oos_enabled,minProductForLandingPage):
     debugResponse = process_catalogs_with_filters(parent_catalog_id,key_version,sscat_mapping,cvf_enabled,oos_enabled)
-    widgetResponse = format_grouped_widget_response(debugResponse["grouped_catalogs"],debugResponse["metadata"][parent_catalog_id])
+    widgetResponse = format_grouped_widget_response(debugResponse["grouped_catalogs"],debugResponse["metadata"][parent_catalog_id],int(minProductForLandingPage))
     feedResponse = convert_to_flattened_feed_response(debugResponse["grouped_catalogs"])
     return (widgetResponse,feedResponse,debugResponse)
 

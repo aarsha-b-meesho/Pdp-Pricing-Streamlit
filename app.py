@@ -40,8 +40,12 @@ if debug_mode:
         with col6:
             landingPageLength = st.text_input("Landing Page Length",value="16")
 
-        _,_,_,_,_,col7 = st.columns(6)
+        col7,col8,col9 = st.columns(3)
         with col7:
+            minimumCatalogsInLandingPage = st.text_input("Minimum Products(Landing Page)", value = "10")
+
+        # _,_,_,_,_,col7 = st.columns(6)
+        with col8:
             # st.write("")  # Alignment
             # submitted_debug = st.form_submit_button("Submit")
             st.write("")  # Placeholder to align the button properly
@@ -63,7 +67,7 @@ if debug_mode:
         if submitted_debug:
             # Make the API call
             try:
-                data,cross_sell_reco,debugResp = get_widget_and_feed_response(parent_catalog_id.strip(),key_version,sscat_mapping,cvf_enabled,oos_enabled)
+                data,cross_sell_reco,debugResp = get_widget_and_feed_response(parent_catalog_id.strip(),key_version,sscat_mapping,cvf_enabled,oos_enabled,minimumCatalogsInLandingPage.strip())
                 if "recommendations" not in data.keys() and (not data["recommendations"]):
                     st.error(f"Failed to fetch recommendations or No recommendations for this ID -   RETRY")
                 elif len(cross_sell_reco)==0:
