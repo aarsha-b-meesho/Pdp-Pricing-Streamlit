@@ -43,10 +43,7 @@ with st.form("input_form"):
             taxonmy_data = fetch_product_details(pdp_data)
             # Process all data sources and combine features
             data = process_data(pdp_data, pricing_data, taxonmy_data)
-            if not data or "recommendations" not in data:
-                st.error("Failed to fetch recommendations or No recommendations for this ID - RETRY")
-            else:
-                display_recommendations(data, catalog_id, user_id, client_id, user_pincode, app_version_code)
+            display_recommendations(data, catalog_id, user_id, client_id, user_pincode, app_version_code)
 
         except requests.exceptions.RequestException as e:
             st.error(f"Failed to fetch recommendations: {e}")
