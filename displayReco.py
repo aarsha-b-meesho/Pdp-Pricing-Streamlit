@@ -2,256 +2,706 @@ import streamlit as st
 from collections import defaultdict
 from taxonomyHandler import fetch_product_details
 
-def display_recommendations(data,cross_sell_reco,limit = 16,isDebug=False,debugResp={}):
-    feedSource = data["feed_source"]
+def display_recommendations(data, catalog_id, user_id, client_id="ios", user_pincode="110001", app_version_code="1.0.0", limit=16):
+    """
+    Display product recommendations in Streamlit interface.
+    
+    Parameters:
+    - data: The processed data containing recommendations and parent metadata
+    - catalog_id: The catalog ID of the parent product
+    - user_id: The user ID for the request
+    - client_id: The client ID (ios or android)
+    - user_pincode: The user's pincode
+    - app_version_code: The app version code
+    - limit: Maximum number of recommendations to display
+    """
 
-    # SScat based grouping
-    crossSellFeedSScat = defaultdict(list)
-    if cross_sell_reco is not Exception:
-        for each_product in cross_sell_reco:
-            crossSellFeedSScat[each_product["old_sub_sub_category_id"]].append(each_product)
-    for each_sscat in crossSellFeedSScat:
-        if len(crossSellFeedSScat[each_sscat])>limit:
-            crossSellFeedSScat[each_sscat] = crossSellFeedSScat[each_sscat][:limit]
-
-    # Display parent metadata
+    # Apply dark mode styling
     st.markdown(
         """
         <style>
-            .yellow-highlight {
-                color: #2337C6;
-                font-weight: bold;
+            /* Global Styles */
+            .stApp {
+                background-color: rgb(250, 250, 250);  /* Light background */
             }
-            .yellow-highlight-light {
-                color: #4CC9F0;
-                font-weight: bold;
-            }v
+            
+            /* Typography */
+            h1, h2, h3 {
+                color: #333333;  /* Dark gray text */
+                font-family: 'Inter', sans-serif;
+                margin-bottom: 1rem;
+            }
+            
+            /* Card Styles */
+            .product-card {
+                background: #ffffff;  /* White cards */
+                border-radius: 12px;
+                padding: 1.5rem;
+                margin: 1rem 0;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                transition: transform 0.2s ease;
+                border: 1px solid #e0e0e0;  /* Light gray border */
+            }
+            
+            .product-card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+                border-color: #007bff;  /* Blue accent on hover */
+            }
+            
+            /* Text Styles */
+            .label {
+                color: #007bff;  /* Blue accent for labels */
+                font-size: 0.9rem;
+                font-weight: 500;
+                margin-bottom: 0.25rem;
+            }
+            
+            .value {
+                color: #333333;  /* Dark gray for values */
+                font-size: 1rem;
+                font-weight: 600;
+            }
+            
+            .price {
+                color: #28a745;  /* Green for prices */
+                font-weight: 700;
+                font-size: 1.1rem;
+            }
+            
+            .discount {
+                color: #dc3545;  /* Red for discounts */
+                font-weight: 700;
+                font-size: 1.1rem;
+            }
+            
+            /* Layout */
             .center-content {
                 text-align: center;
+                padding: 1rem;
             }
+            
             .center-content img {
-                margin: auto;
+                border-radius: 8px;
+                margin: 1rem auto;
                 display: block;
+                max-width: 100%;
+                height: auto;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             }
-            .bordered-column{
-                margin: -10px,
-                padding: 0,
-                background-color: red
+            
+            /* Section Headers */
+            .section-header {
+                color: #333333;  /* Dark gray text */
+                font-size: 1.5rem;
+                font-weight: 700;
+                margin: 2rem 0 1rem 0;
+                padding-bottom: 0.5rem;
+                border-bottom: 2px solid #007bff;  /* Blue accent border */
+            }
+            
+            /* Grid Layout */
+            .grid-container {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 1.5rem;
+                padding: 1rem 0;
+            }
+
+            /* Streamlit specific overrides */
+            .stMarkdown {
+                color: #333333;  /* Dark gray text */
+            }
+            
+            .stAlert {
+                background-color: #ffffff !important;
+                color: #333333 !important;
+                border: 1px solid #007bff !important;
+            }
+            
+            .stWarning {
+                background-color: #fff3cd !important;
+                color: #856404 !important;
+                border: 1px solid #ffeeba !important;
+            }
+            
+            .stError {
+                background-color: #f8d7da !important;
+                color: #721c24 !important;
+                border: 1px solid #f5c6cb !important;
+            }
+
+            /* Form Elements */
+            .stTextInput > div > div > input,
+            .stSelectbox > div > div > select,
+            div[data-baseweb="select"] > div,
+            div[data-baseweb="select"] div,
+            .stTextInput > div > div > input:focus,
+            .stSelectbox > div > div > select:focus,
+            div[data-baseweb="select"] > div:focus,
+            div[data-baseweb="select"] div:focus {
+                background-color: #ffffff !important;
+                border: 1px solid #ced4da !important;
+                color: #333333 !important;
+                caret-color: #333333 !important;
+            }
+
+            /* Dropdown menu items */
+            div[data-baseweb="popover"] * {
+                background-color: #ffffff !important;
+                color: #333333 !important;
+            }
+
+            div[data-baseweb="select"] * {
+                background-color: #ffffff !important;
+                color: #333333 !important;
+            }
+
+            /* Button Styles */
+            .stButton > button,
+            .stButton > button:focus,
+            .stButton > button:active,
+            .stButton > button:hover,
+            .stButton > button:disabled {
+                background: linear-gradient(145deg, #007bff, #0056b3) !important;
+                color: white !important;
+                border: none !important;
+                font-weight: 600 !important;
+                padding: 0.5rem 1.5rem !important;
+                border-radius: 8px !important;
+                transition: all 0.3s ease !important;
+            }
+
+            .stButton > button:hover {
+                background: linear-gradient(145deg, #0056b3, #007bff) !important;
+                transform: translateY(-2px) !important;
+                box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3) !important;
+            }
+
+            /* Override any dark mode styles */
+            .stApp [data-testid="stForm"] {
+                border-color: #ced4da !important;
+                background-color: #ffffff !important;
+            }
+
+            /* Style for the form container */
+            .stApp [data-testid="stForm"] > div:first-child {
+                background-color: #ffffff !important;
+                border: 1px solid #ced4da !important;
+                border-radius: 8px !important;
+                padding: 1rem !important;
+            }
+
+            /* Style for select dropdown */
+            div[role="listbox"] {
+                background-color: #ffffff !important;
+            }
+
+            div[role="option"] {
+                background-color: #ffffff !important;
+                color: #333333 !important;
+            }
+
+            div[role="option"]:hover {
+                background-color: #f8f9fa !important;
+            }
+
+            /* Fix for text input cursor */
+            .stTextInput > div > div > input::selection {
+                background-color: #007bff !important;
+                color: #ffffff !important;
+            }
+
+            /* Ensure form elements stay white after submission */
+            .stForm > div {
+                background-color: #ffffff !important;
+            }
+
+            /* Fix for select box after submission */
+            div[data-baseweb="select"] > div[aria-expanded="true"] {
+                background-color: #ffffff !important;
+                color: #333333 !important;
+            }
+
+            /* Fix for text input after submission */
+            .stTextInput > div > div > input[type="text"] {
+                background-color: #ffffff !important;
+                color: #333333 !important;
+                caret-color: #333333 !important;
             }
         </style>
         """,
         unsafe_allow_html=True,
     )
 
-    if data.get('parent_metadata',0)!=0 and data.get('parent_metadata').get("product_id",0)!=0:
-        taxonomyData = fetch_product_details([data.get('parent_metadata').get("product_id")])
-    if  taxonomyData and len(taxonomyData)>0:
-        parentCol = st.columns(4)
-        with parentCol[0]:
-            # Parent Metadata Section
-            st.markdown('<div class="center-content">', unsafe_allow_html=True)
-            st.header("Product Details")
+    # Display parent product details if available
+    parent_metadata = data.get("parent_metadata", {})
+    if parent_metadata:
+        st.markdown('<h1 class="section-header">Parent Product Details</h1>', unsafe_allow_html=True)
 
-            # Display catalog name and ID
+        parent_cols = st.columns([1, 1, 1])
+        with parent_cols[0]:
+            st.markdown('<div class="product-card">', unsafe_allow_html=True)
+            st.markdown('<h3>Product Information</h3>', unsafe_allow_html=True)
+
+            # Display catalog information with improved styling
             st.markdown(
-                f'<p><span class="yellow-highlight">Catalog Name:</span> {taxonomyData[0].get("catalog_name", "N/A")}</p>',
+                f'<p class="label">Catalog Name</p><p class="value">{parent_metadata.get("catalog_name", "N/A")}</p>',
                 unsafe_allow_html=True,
             )
             st.markdown(
-                f'<p><span class="yellow-highlight">Catalog ID:</span> {taxonomyData[0].get("catalog_id", "N/A")}</p>',
+                f'<p class="label">Catalog ID</p><p class="value">{catalog_id}</p>',
                 unsafe_allow_html=True,
             )
             st.markdown(
-                f'<p><span class="yellow-highlight">SSCat Name:</span> {taxonomyData[0].get("sscat_name", "N/A")}</p>',
+                f'<p class="label">SSCat Name</p><p class="value">{parent_metadata.get("sscat_name", "N/A")}</p>',
                 unsafe_allow_html=True,
             )
             st.markdown(
-                f'<p><span class="yellow-highlight">SSCat ID:</span> {taxonomyData[0].get("old_sub_sub_category_id", "N/A")}</p>',
+                f'<p class="label">SSCat ID</p><p class="value">{parent_metadata.get("old_sub_sub_category_id", "N/A")}</p>',
                 unsafe_allow_html=True,
             )
             st.markdown("</div>", unsafe_allow_html=True)
-        with parentCol[1]:
-            # Display images in a horizontally scrollable gallery
-            st.markdown('<div class="center-content">', unsafe_allow_html=True)
-            st.markdown('<div style="display: flex; overflow-x: auto;">', unsafe_allow_html=True)
-            for image_url in taxonomyData[0].get("product_images", [])[:1]:
-                st.markdown(
-                    f'<img src="{image_url}" style="width: 300px; margin-right: 10px;">',
-                    unsafe_allow_html=True,
+
+        with parent_cols[1]:
+            if parent_metadata.get("product_images"):
+                st.markdown('<div class="product-card center-content">', unsafe_allow_html=True)
+                st.image(
+                    parent_metadata.get("product_images")[0],
+                    width=300,
+                    caption=parent_metadata.get("catalog_name", "")
                 )
-            st.markdown("</div>", unsafe_allow_html=True)
-        with parentCol[3]:
-            # Parent Metadata Section
-            st.markdown('<div class="center-content">', unsafe_allow_html=True)
-            st.header("Feed Source")
+                st.markdown("</div>", unsafe_allow_html=True)
 
-            # Display catalog name and ID
+        with parent_cols[2]:
+            st.markdown('<div class="product-card">', unsafe_allow_html=True)
+            st.markdown('<h3>User Information</h3>', unsafe_allow_html=True)
+
             st.markdown(
-                f'<p><span class="yellow-highlight" style="font-size: 25px;">{feedSource}<span></p>',
+                f'<p class="label">User ID</p><p class="value">{user_id}</p>',
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                f'<p class="label">Client ID</p><p class="value">{client_id}</p>',
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                f'<p class="label">User Pincode</p><p class="value">{user_pincode}</p>',
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                f'<p class="label">App Version</p><p class="value">{app_version_code}</p>',
                 unsafe_allow_html=True,
             )
             st.markdown("</div>", unsafe_allow_html=True)
-
-
-        st.markdown("</div>", unsafe_allow_html=True)
-    if "parent_metadata" not in data.keys() or data.get("parent_metadata", {}) is None:
-        st.markdown("NO CROSS SELL RECOMMENDATION FOR THIS PRODUCT ID")
-
     else:
-        # Group recommendations by sscat_name
-        isDuplicateWidgetFeedComing = False
-        recommendations = data.get("recommendations", [])
-        grouped_recommendations = defaultdict(list)
-        sscat_name_2_id_mapping = defaultdict(str)
-        for item in recommendations:
-            sscat_name_2_id_mapping[item["sscat_name"]] = item["sscat_id"]
-            grouped_recommendations[item["sscat_name"]].append(item)
-            if len(grouped_recommendations[item["sscat_name"]])>1:
-                isDuplicateWidgetFeedComing = True
+        st.error("No parent metadata available for this product ID")
+        return
 
-        # Display recommendations grouped by SSCat
-        st.header("Widget Recommendations")
-        colForHorizontalWidget = st.columns(6)
-        for i in range(min(6,len(data.get("recommendations",[])))):
-            with colForHorizontalWidget[i]:
-                st.markdown(f"""
-                                        <figure style="text-align: center;">
-                                            <img src="{data.get("recommendations")[i]["widget_metadata"]["image"]}" style="height: 250px; margin-right: 10px;">
-                                            <figcaption style="margin-top: 5px; font-size: 14px; color: gray;">{data.get("recommendations")[i]["sscat_name"]}</figcaption>
-                                        </figure>
-                                        """,unsafe_allow_html=True,
-                            )
+    # Process and display recommendations
+    recommendations = data.get("recommendations", {})
+    if not recommendations:
+        st.warning("No recommendations available for this product")
+        return
+
+    st.markdown('<h1 class="section-header">Product Recommendations</h1>', unsafe_allow_html=True)
+
+    # Process recommendations
+    processed_recommendations = []
+    for product_id, details in recommendations.items():
+        pdp_features = details.get("pdp_features", {})
+        pricing_features = details.get("pricing_features", {})
+        taxonomy_features = details.get("taxonomy_features", {})
+
+        processed_item = {
+            "product_id": product_id,
+            "catalog_id": pdp_features.get("catalog_id", "N/A"),
+            "sscat_id": taxonomy_features.get("sscat_id", "N/A"),
+            "sscat_name": taxonomy_features.get("sscat_name", "Other"),
+            "widget_metadata": {
+                "image": taxonomy_features.get("images", ["https://via.placeholder.com/250"])[0] if taxonomy_features.get("images") else "https://via.placeholder.com/250",
+                "title": taxonomy_features.get("catalog_name", "Product"),
+                "price": pricing_features.get("serving_price", "N/A")
+            },
+            "serving_price": pricing_features.get("serving_price", "N/A"),
+            "strike_off_price": pricing_features.get("strike_off_price", "N/A")
+        }
+        processed_recommendations.append(processed_item)
+
+    # Display recommendations in a 4x5 grid
+    for i in range(0, len(processed_recommendations), 4):
+        row_items = processed_recommendations[i:i+4]
+        cols = st.columns(4)
+
+        for idx, product in enumerate(row_items):
+            with cols[idx]:
+                st.markdown('<div class="product-card">', unsafe_allow_html=True)
+
+                # Product Image
+                widget_metadata = product.get("widget_metadata", {})
+                if image_url := widget_metadata.get("image"):
+                    st.image(image_url, width=200)
+
+                # Product Details
                 st.markdown(
-                    f'<p><span class="yellow-highlight-light">Product Id:</span> {data.get("recommendations")[i]["product_id"]}</p>',
+                    f'<p class="label">Title</p><p class="value">{widget_metadata.get("title", "N/A")}</p>',
                     unsafe_allow_html=True,
                 )
                 st.markdown(
-                    f'<p><span class="yellow-highlight-light">Catalog Id:</span> {data.get("recommendations")[i]["catalog_id"]}</p>',
+                    f'<p class="label">Product ID</p><p class="value">{product.get("product_id", "N/A")}</p>',
                     unsafe_allow_html=True,
                 )
                 st.markdown(
-                    f'<p><span class="yellow-highlight-light">Sscat Id:</span> {data.get("recommendations")[i]["sscat_id"]}</p>',
+                    f'<p class="label">Catalog ID</p><p class="value">{product.get("catalog_id", "N/A")}</p>',
                     unsafe_allow_html=True,
                 )
-                st.markdown('</div>', unsafe_allow_html=True)
 
-        if isDuplicateWidgetFeedComing:
-            st.markdown("Duplicate Products Coming in Widget Feed")
-        for sscat_name, products in grouped_recommendations.items():
-            st.markdown(
-                f"""
-                            <div class="recommendation-title">
-                                <span class="yellow-highlight">
-                                    <span style="font-size: 25px; margin-right: 10px;">{sscat_name}</span>
-                                    <span class="yellow-highlight-light"  style="font-size: 18px;">( SSCAT Id:- {sscat_name_2_id_mapping[sscat_name]}) </span>
-                                </span>
-                            </div>
-                            """,
-                unsafe_allow_html=True
-            )
-            cols = st.columns(3)
-            # On left column we will show product data , but on right side we will show feed data based on crossSellFeedSScat["
-            for idx, product in enumerate(products[:1]):
-                with cols[0]:
-                    st.markdown('<div class="product-container">', unsafe_allow_html=True)
-                    st.image(product["widget_metadata"]["image"], width=250)
+                # Pricing Information
+                if product.get("serving_price"):
                     st.markdown(
-                        f'<p><span class="yellow-highlight-light">Title:</span> {product["widget_metadata"]["title"]}</p>',
+                        f'<p class="label">Serving Price</p><p class="price">₹{product.get("serving_price", "N/A")}</p>',
                         unsafe_allow_html=True,
                     )
+                if product.get("strike_off_price"):
                     st.markdown(
-                        f'<p><span class="yellow-highlight-light">Product ID:</span> {product["product_id"]}</p>',
+                        f'<p class="label">Strike-off Price</p><p class="value">₹{product.get("strike_off_price", "N/A")}</p>',
                         unsafe_allow_html=True,
                     )
-                    st.markdown(
-                        f'<p><span class="yellow-highlight-light">Catalog ID:</span> {product["catalog_id"]}</p>',
-                        unsafe_allow_html=True,
-                    )
-                    st.markdown("</div>", unsafe_allow_html=True)
-                cross_sell_data = crossSellFeedSScat[product["sscat_id"]]
-                feed_len1 = 2*(len(cross_sell_data)//4 )
-                if len(cross_sell_data)%4 ==1 or len(cross_sell_data)%4 ==2:
-                    feed_len1+=len(cross_sell_data)%4
-                if len(cross_sell_data)%4 ==3:
-                    feed_len1+=2
-                cross_sell_feed_screen1 = cross_sell_data[:feed_len1]
-                cross_sell_feed_screen2 = cross_sell_data[feed_len1:]
-                with cols[1]:
-                    # st.markdown('<div class="bordered-column">', unsafe_allow_html=True)
-                    # Display Cross-Sell Products in Rows of 2
-                    for i in range(0, len(cross_sell_feed_screen1), 2):
-                        row = st.columns(2)  # Create 2 columns for each row
-                        for col, item in zip(row, cross_sell_feed_screen1[i:i + 2]):
-                            with col:
-                                st.markdown(f"""
-                                                    <figure style="text-align: center;">
-                                                        <img src="{item["product_images"][0]}" style="height: 250px; margin-right: 10px;">
-                                                        <figcaption style="margin-top: 5px; font-size: 14px; color: gray;">{item['catalog_name']}</figcaption>
-                                                    </figure>
-                                                    """,unsafe_allow_html=True,
-                                            )
-                                st.markdown(f"Product ID: {item['product_id']}")
-                                st.markdown(f"Catalog ID: {item['catalog_id']}")
-                    # st.markdown('</div>', unsafe_allow_html=True)
-                with cols[2]:
-                    # Display Cross-Sell Products in Rows of 2
-                    for i in range(0, len(cross_sell_feed_screen2), 2):
-                        row = st.columns(2)  # Create 2 columns for each row
-                        for col, item in zip(row, cross_sell_feed_screen2[i:i + 2]):
-                            with col:
-                                st.markdown(f"""
-                                                    <figure style="text-align: center;">
-                                                        <img src="{item["product_images"][0]}" style="height: 250px; margin-right: 10px;">
-                                                        <figcaption style="margin-top: 5px; font-size: 14px; color: gray;">{item['catalog_name']}</figcaption>
-                                                    </figure>
-                                                    """,unsafe_allow_html=True,
-                                            )
-                                st.markdown(f"Product ID: {item['product_id']}")
-                                st.markdown(f"Catalog ID: {item['catalog_id']}")
 
-        if isDebug==True and len(debugResp.keys())>1:
-            st.markdown("Ds-Pushed Catalogs")
-            st.write(debugResp["ds_pushed_catalogs"])
-            st.markdown("CVF Filtered")
-            st.write(debugResp["cvf_filter_catalogs"])
-            st.markdown("OOS Filtered")
-            st.write(debugResp["oos_filtered_catalogs"])
-            st.markdown("SSCAT Mappig")
-            st.write(debugResp["sscat_mapping"])
-            st.markdown("Catalogs After Filtering")
-            st.write(debugResp["filtered_catalog_ids"])
-        else:
-            st.header("Cross Sell Feed Recommendations")
+                    # Calculate and display discount
+                    if product.get("serving_price") and product.get("strike_off_price"):
+                        try:
+                            serving_price = float(product.get("serving_price"))
+                            strike_off_price = float(product.get("strike_off_price"))
+                            if strike_off_price > 0:
+                                discount = round((1 - serving_price / strike_off_price) * 100)
+                                st.markdown(
+                                    f'<p class="label">Discount</p><p class="discount">{discount}% OFF</p>',
+                                    unsafe_allow_html=True,
+                                )
+                        except (ValueError, TypeError):
+                            pass
 
-            #     # Display products in rows of 2
-            for i in range(0, len(cross_sell_reco), 5):
-                cols = st.columns(5)  # Create two columns
-                st.markdown('<div style="border: 1px solid #ccc; padding: 5px; margin-bottom: 10px;">', unsafe_allow_html=True)
-                for col, product in zip(cols, cross_sell_reco[i:i + 5]):
-                    with col:
+                st.markdown("</div>", unsafe_allow_html=True)
 
-                        st.markdown(f"""
-                                            <figure style="text-align: center;">
-                                                <img src="{product['product_images'][0]}" style="height: 250px; margin-right: 10px;">
-                                                <figcaption style="margin-top: 5px; font-size: 14px; color: gray;">{product['catalog_name']}</figcaption>
-                                            </figure>
-                                            """,unsafe_allow_html=True,
-                                    )
-                        st.markdown(
-                            f'<p><span class="yellow-highlight-light">Product Id:</span> {product["product_id"]}</p>',
-                            unsafe_allow_html=True,
-                        )
-                        st.markdown(
-                            f'<p><span class="yellow-highlight-light">Catalog Id:</span> {product["catalog_id"]}</p>',
-                            unsafe_allow_html=True,
-                        )
-                        st.markdown(
-                            f'<p><span class="yellow-highlight-light">Sscat Id:</span> {product["old_sub_sub_category_id"]}</p>',
-                            unsafe_allow_html=True,
-                        )
-                        st.markdown(
-                            f'<p><span class="yellow-highlight-light">Sscat Name:</span> {product["sscat_name"]}</p>',
-                            unsafe_allow_html=True,
-                        )
-                        st.markdown('</div>', unsafe_allow_html=True)
+def display_pdp_recommendations(data, product_id, user_id, client_id="ios", user_pincode="110001", app_version_code="1.0.0", limit=16):
+    """
+    Display PDP recommendations with pricing information
 
+    Parameters:
+    - data: The processed data containing recommendations and parent metadata
+    - product_id: The product ID of the parent product
+    - user_id: The user ID for the request
+    - client_id: The client ID (ios or android)
+    - user_pincode: The user's pincode
+    - app_version_code: The app version code
+    - limit: Maximum number of recommendations to display
+    """
+    # Apply dark mode styling
+    st.markdown("""
+        <style>
+            /* Global Styles */
+            .stApp {
+                background-color: rgb(250, 250, 250);  /* Light background */
+            }
+            
+            /* Typography */
+            h1, h2, h3 {
+                color: #333333;  /* Dark gray text */
+                font-family: 'Inter', sans-serif;
+                margin-bottom: 1rem;
+            }
+            
+            /* Card Styles */
+            .product-card {
+                background: #ffffff;  /* White cards */
+                border-radius: 12px;
+                padding: 1.5rem;
+                margin: 1rem 0;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                transition: transform 0.2s ease;
+                border: 1px solid #e0e0e0;  /* Light gray border */
+            }
+            
+            .product-card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+                border-color: #007bff;  /* Blue accent on hover */
+            }
+            
+            /* Text Styles */
+            .label {
+                color: #007bff;  /* Blue accent for labels */
+                font-size: 0.9rem;
+                font-weight: 500;
+                margin-bottom: 0.25rem;
+            }
+            
+            .value {
+                color: #333333;  /* Dark gray for values */
+                font-size: 1rem;
+                font-weight: 600;
+            }
+            
+            .price {
+                color: #28a745;  /* Green for prices */
+                font-weight: 700;
+                font-size: 1.1rem;
+            }
+            
+            .discount {
+                color: #dc3545;  /* Red for discounts */
+                font-weight: 700;
+                font-size: 1.1rem;
+            }
+            
+            /* Layout */
+            .center-content {
+                text-align: center;
+                padding: 1rem;
+            }
+            
+            .center-content img {
+                border-radius: 8px;
+                margin: 1rem auto;
+                display: block;
+                max-width: 100%;
+                height: auto;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            }
+            
+            /* Section Headers */
+            .section-header {
+                color: #333333;  /* Dark gray text */
+                font-size: 1.5rem;
+                font-weight: 700;
+                margin: 2rem 0 1rem 0;
+                padding-bottom: 0.5rem;
+                border-bottom: 2px solid #007bff;  /* Blue accent border */
+            }
+            
+            /* Grid Layout */
+            .grid-container {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 1.5rem;
+                padding: 1rem 0;
+            }
+
+            /* Streamlit specific overrides */
+            .stMarkdown {
+                color: #333333;  /* Dark gray text */
+            }
+            
+            .stAlert {
+                background-color: #ffffff !important;
+                color: #333333 !important;
+                border: 1px solid #007bff !important;
+            }
+            
+            .stWarning {
+                background-color: #fff3cd !important;
+                color: #856404 !important;
+                border: 1px solid #ffeeba !important;
+            }
+            
+            .stError {
+                background-color: #f8d7da !important;
+                color: #721c24 !important;
+                border: 1px solid #f5c6cb !important;
+            }
+
+            /* Form Elements */
+            .stTextInput > div > div > input,
+            .stSelectbox > div > div > select,
+            div[data-baseweb="select"] > div,
+            div[data-baseweb="select"] div,
+            .stTextInput > div > div > input:focus,
+            .stSelectbox > div > div > select:focus,
+            div[data-baseweb="select"] > div:focus,
+            div[data-baseweb="select"] div:focus {
+                background-color: #ffffff !important;
+                border: 1px solid #ced4da !important;
+                color: #333333 !important;
+                caret-color: #333333 !important;
+            }
+
+            /* Dropdown menu items */
+            div[data-baseweb="popover"] * {
+                background-color: #ffffff !important;
+                color: #333333 !important;
+            }
+
+            div[data-baseweb="select"] * {
+                background-color: #ffffff !important;
+                color: #333333 !important;
+            }
+
+            /* Button Styles */
+            .stButton > button,
+            .stButton > button:focus,
+            .stButton > button:active,
+            .stButton > button:hover,
+            .stButton > button:disabled {
+                background: linear-gradient(145deg, #007bff, #0056b3) !important;
+                color: white !important;
+                border: none !important;
+                font-weight: 600 !important;
+                padding: 0.5rem 1.5rem !important;
+                border-radius: 8px !important;
+                transition: all 0.3s ease !important;
+            }
+
+            .stButton > button:hover {
+                background: linear-gradient(145deg, #0056b3, #007bff) !important;
+                transform: translateY(-2px) !important;
+                box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3) !important;
+            }
+
+            /* Override any dark mode styles */
+            .stApp [data-testid="stForm"] {
+                border-color: #ced4da !important;
+                background-color: #ffffff !important;
+            }
+
+            /* Style for the form container */
+            .stApp [data-testid="stForm"] > div:first-child {
+                background-color: #ffffff !important;
+                border: 1px solid #ced4da !important;
+                border-radius: 8px !important;
+                padding: 1rem !important;
+            }
+
+            /* Style for select dropdown */
+            div[role="listbox"] {
+                background-color: #ffffff !important;
+            }
+
+            div[role="option"] {
+                background-color: #ffffff !important;
+                color: #333333 !important;
+            }
+
+            div[role="option"]:hover {
+                background-color: #f8f9fa !important;
+            }
+
+            /* Fix for text input cursor */
+            .stTextInput > div > div > input::selection {
+                background-color: #007bff !important;
+                color: #ffffff !important;
+            }
+
+            /* Ensure form elements stay white after submission */
+            .stForm > div {
+                background-color: #ffffff !important;
+            }
+
+            /* Fix for select box after submission */
+            div[data-baseweb="select"] > div[aria-expanded="true"] {
+                background-color: #ffffff !important;
+                color: #333333 !important;
+            }
+
+            /* Fix for text input after submission */
+            .stTextInput > div > div > input[type="text"] {
+                background-color: #ffffff !important;
+                color: #333333 !important;
+                caret-color: #333333 !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Parent Product Section
+    st.markdown('<h1 class="section-header">Parent Product Details</h1>', unsafe_allow_html=True)
+    parent_data = data.get('parent_metadata', {})
+
+    parent_cols = st.columns(3)
+    with parent_cols[0]:
+        st.markdown('<div class="product-card">', unsafe_allow_html=True)
+        st.markdown('<h3>User Information</h3>', unsafe_allow_html=True)
+        st.markdown(f'<p class="label">User ID</p><p class="value">{user_id}</p>', unsafe_allow_html=True)
+        st.markdown(f'<p class="label">Parent Catalog ID</p><p class="value">{product_id}</p>', unsafe_allow_html=True)
+        st.markdown(f'<p class="label">Hero Product ID</p><p class="value">{parent_data.get("hero_product_id", "N/A")}</p>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with parent_cols[1]:
+        st.markdown('<div class="product-card">', unsafe_allow_html=True)
+        st.markdown('<h3>Pricing Information</h3>', unsafe_allow_html=True)
+        st.markdown(f'<p class="label">Serving Price</p><p class="price">₹{parent_data.get("serving_price", "N/A")}</p>', unsafe_allow_html=True)
+        st.markdown(f'<p class="label">Strike off Price</p><p class="value">₹{parent_data.get("strike_off_price", "N/A")}</p>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with parent_cols[2]:
+        st.markdown('<div class="product-card">', unsafe_allow_html=True)
+        st.markdown('<h3>Discount Information</h3>', unsafe_allow_html=True)
+        discount = parent_data.get('discount_percentage', 'N/A')
+        st.markdown(f'<p class="label">Discount</p><p class="discount">{discount}% OFF</p>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # Recommendations Section
+    st.markdown('<h1 class="section-header">Recommendations</h1>', unsafe_allow_html=True)
+
+    # Process recommendations
+    processed_recommendations = []
+    recommendations = data.get('recommendations', {})
+
+    for product_id, details in recommendations.items():
+        pdp_features = details.get("pdp_features", {})
+        pricing_features = details.get("pricing_features", {})
+        taxonomy_features = details.get("taxonomy_features", {})
+
+        processed_item = {
+            "catalog_id": pdp_features.get("catalog_id", "N/A"),
+            "hero_product_id": product_id,
+            "ds_serving_price": pricing_features.get("serving_price", "N/A"),
+            "app_serving_price": pricing_features.get("serving_price", "N/A"),
+            "strike_off_price": pricing_features.get("strike_off_price", "N/A"),
+            "discount_percentage": "N/A",
+            "widget_metadata": {
+                "image": taxonomy_features.get("images", ["https://via.placeholder.com/250"])[0] if taxonomy_features.get("images") else "https://via.placeholder.com/250",
+            }
+        }
+
+        # Calculate discount
+        try:
+            serving_price = float(pricing_features.get("serving_price", 0))
+            strike_off_price = float(pricing_features.get("strike_off_price", 0))
+            if strike_off_price > 0:
+                discount = round((1 - serving_price / strike_off_price) * 100)
+                processed_item["discount_percentage"] = discount
+        except (ValueError, TypeError, ZeroDivisionError):
+            pass
+
+        processed_recommendations.append(processed_item)
+
+    if processed_recommendations:
+        for idx, reco in enumerate(processed_recommendations[:limit], 1):
+            st.markdown('<div class="product-card">', unsafe_allow_html=True)
+
+            cols = st.columns([1, 2, 2])
+
+            # Column 1: Image and Rank
+            with cols[0]:
+                if image_url := reco.get('widget_metadata', {}).get('image'):
+                    st.image(image_url, width=150)
+                st.markdown(f'<p class="label">Rank</p><p class="value">#{idx}</p>', unsafe_allow_html=True)
+
+            # Column 2: Basic Info
+            with cols[1]:
+                st.markdown('<h3>Product Information</h3>', unsafe_allow_html=True)
+                st.markdown(f'<p class="label">Child Catalog ID</p><p class="value">{reco.get("catalog_id", "N/A")}</p>', unsafe_allow_html=True)
+                st.markdown(f'<p class="label">Hero Product ID</p><p class="value">{reco.get("hero_product_id", "N/A")}</p>', unsafe_allow_html=True)
+                st.markdown(f'<p class="label">DS Serving Price</p><p class="price">₹{reco.get("ds_serving_price", "N/A")}</p>', unsafe_allow_html=True)
+
+            # Column 3: Pricing Info
+            with cols[2]:
+                st.markdown('<h3>Pricing Details</h3>', unsafe_allow_html=True)
+                st.markdown(f'<p class="label">App Serving Price</p><p class="price">₹{reco.get("app_serving_price", "N/A")}</p>', unsafe_allow_html=True)
+                st.markdown(f'<p class="label">Strike off Price</p><p class="value">₹{reco.get("strike_off_price", "N/A")}</p>', unsafe_allow_html=True)
+                discount = reco.get('discount_percentage', 'N/A')
+                st.markdown(f'<p class="label">Discount</p><p class="discount">{discount}% OFF</p>', unsafe_allow_html=True)
+
+            st.markdown("</div>", unsafe_allow_html=True)
+    else:
+        st.warning("No recommendations available for this product.")

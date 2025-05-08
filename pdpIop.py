@@ -1,8 +1,9 @@
-import requests
+import grpc
+from pdp_iop_grpc import service_pb2_grpc, request_pb2, response_pb2
 
 def get_catalog_ids(parent_entity_id):
     """
-    Fetches catalog IDs for a given parent entity ID.
+    Fetches catalog IDs for a given parent entity ID using gRPC.
 
     Parameters:
     parent_entity_id (int): The parent entity ID.
@@ -10,41 +11,52 @@ def get_catalog_ids(parent_entity_id):
     Returns:
     list: List of catalog IDs from the response.
     """
-    url = "http://pdp-iop-service-web.prd.meesho.int/api/v1/entities/exploit"
-    headers = {
-        "MEESHO-USER-ID": "14409845",
-        "MEESHO-TENANT-CONTEXT": "organic",
-        "Content-Type": "application/json",
-        "Authorization": "HrRRsCqQ203i1PVnL1TfNY0Tt9QW9SXzTRE1mEI6B4LhzSdVa2tFqyoDVvnyZV1i",
-        "MEESHO-USER-CONTEXT": "logged_in"
-    }
-    payload = {
-        "data": {
-            "cursor": None,
-            "parent_entity_id": parent_entity_id,
-            "parent_entity_type": "catalog",
-            "limit": 15
-        }
-    }
+    # Create gRPC channel
+    channel = grpc.insecure_channel('pdp-iop-grpc-service-web.prd.meesho.int:80')
+    
+    # Create metadata (headers)
+    metadata = [
+        ('meesho-user-id', '241351057'),
+        ('meesho-user-context', 'logged_in')
+    ]
 
     try:
-        response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status()  # Raise an error for bad status codes
-        response_data = response.json()
-
+        # Create the request message using the generated proto classes
+        request_data = request_pb2.RequestData(
+            parentEntityId=parent_entity_id,
+            parentEntityType="catalog",
+            feedContext="default",
+            limit=20
+        )
+        
+        feed_request = request_pb2.GetSimilarEntityFeedRequest(
+            data=request_data
+        )
+        
+        request = request_pb2.GetSimilarEntityOrganicFeedRequest(
+            request=feed_request
+        )
+        
+        # Create a stub for the PdpIopService
+        stub = service_pb2_grpc.PdpIopServiceStub(channel)
+        
+        # Make the gRPC call using the generated stub
+        response = stub.FetchExploitSimilarEntityFeed(request, metadata=metadata)
+        
         # Extract catalog IDs from the response
-        similar_entities = response_data.get("data", {}).get("similar_entities", [])
-        catalog_ids = [entity["id"] for entity in similar_entities]
+        similar_entities = response.response.data.similarEntities
+        catalog_ids = [entity.id for entity in similar_entities]
         return catalog_ids
-    except requests.RequestException as e:
-        print(f"HTTP Request failed: {e}")
+    except grpc.RpcError as e:
+        print(f"gRPC call failed: {e}")
         return []
-    except KeyError as e:
-        print(f"Missing key in response: {e}")
+    except Exception as e:
+        print(f"Error: {e}")
         return []
+    finally:
+        channel.close()
 
-if __name__=="__main__":
+if __name__ == "__main__":
     # Example usage
     parent_entity_id_input = 69902829
     catalog_ids = get_catalog_ids(parent_entity_id_input)
-    print("Catalog IDs:", catalog_ids)

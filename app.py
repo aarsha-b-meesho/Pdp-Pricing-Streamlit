@@ -2,140 +2,54 @@ import streamlit as st
 import requests
 import json
 from collections import defaultdict
-from widgetHandler import get_cross_sell_recommendations
 from displayReco import display_recommendations
-from processDsBatchWithDebugApis import  get_widget_and_feed_response
+from pdpIop import get_catalog_ids
 from taxonomyHandler import fetch_product_details
-from feedHandler import get_cross_sell_feed_with_metadata_from_widget
+from pricing_service import get_pricing_features
+from dataprocessing import process_data
+
 st.set_page_config(
-    page_title="Cross-Sell Recommendations",
+    page_title="PDP Recommendations",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Title and toggle
-st.title("Cross-Sell Recommendations")
-debug_mode = st.toggle("Debug DS_BATCH", value=False)
+# Title
+st.title("PDP Recommendations")
 
-# Debug mode input flow
-if debug_mode:
+with st.form("input_form"):
+    st.write("Enter Details:")
 
-    with st.form("debug_form"):
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            parent_catalog_id = st.text_input("Parent Catalog-Id", value="95007398")
-        with col2:
-            key_version = st.selectbox("DS Key-Version", ["V1", "V2", "V3"],index=1)
-        with col3:
-            sscat_mapping = st.selectbox("Sscat-Mapping", ["v2"])
+    # Create three columns for inputs
+    col1, col2, col3 = st.columns(3)
 
-        col4, col5, col6 = st.columns(3)
+    with col1:
+        catalog_id = st.text_input("Catalog ID", value="126277899")
+        client_id = st.selectbox("Client ID", options=["ios", "android"], index=0)
+    with col2:
+        user_id = st.text_input("User ID", value="326765744")
+        user_pincode = st.text_input("User Pincode", value="122001")
+    with col3:
+        app_version_code = st.text_input("App Version Code", value="685")
 
-        with col4:
-            cvf_enabled = st.selectbox("CVF Enabled", ["Yes", "No"])
-        with col5:
-            oos_enabled = st.selectbox("OOS Enabled", ["Yes", "No"])
+    submitted = st.form_submit_button("Submit", use_container_width=True)
 
-        with col6:
-            landingPageLength = st.text_input("Landing Page Length",value="16")
-
-        col7,col8,col9 = st.columns(3)
-        with col7:
-            minimumCatalogsInLandingPage = st.text_input("Minimum Products(Landing Page)", value = "10")
-
-        with col8:
-            userId = st.text_input("User-Id(Req. for CVF Filter)",value="390374537")
-
-        # _,_,_,_,_,col7 = st.columns(6)
-        with col9:
-            # st.write("")  # Alignment
-            # submitted_debug = st.form_submit_button("Submit")
-            st.write("")  # Placeholder to align the button properly
-            submitted = st.markdown(
-                """<style>
-                    div.stButton > button {
-                        width: 200%;
-                        height: 3em;
-                        font-size: 1.2em;
-                        font-weight: bold;
-                    }
-                </style>
-                """,
-                unsafe_allow_html=True
-            )
-            submitted_debug = st.form_submit_button("Submit")
-
-
-        if submitted_debug:
+    if submitted:
+        try:
             # Make the API call
-            try:
-                data,cross_sell_reco,debugResp = get_widget_and_feed_response(parent_catalog_id.strip(),key_version,sscat_mapping,cvf_enabled,oos_enabled,minimumCatalogsInLandingPage.strip(),userId.strip())
-                if "recommendations" not in data.keys() and (not data["recommendations"]):
-                    st.error(f"Failed to fetch recommendations or No recommendations for this ID -   RETRY")
-                elif len(cross_sell_reco)==0:
-                    st.error(f"Failed to fetch recommendations or No recommendations for this ID -   RETRY")
-                else:
-                    display_recommendations(data,cross_sell_reco,int(landingPageLength.strip()),isDebug=True,debugResp=debugResp)
+            pdp_data = get_catalog_ids(int(catalog_id))
+            pricing_data = get_pricing_features(user_id, pdp_data, client_id, user_pincode, app_version_code)
+            taxonmy_data = fetch_product_details(pdp_data)
+            # Process all data sources and combine features
+            data = process_data(pdp_data, pricing_data, taxonmy_data)
+            if not data or "recommendations" not in data:
+                st.error("Failed to fetch recommendations or No recommendations for this ID - RETRY")
+            else:
+                display_recommendations(data, catalog_id, user_id, client_id, user_pincode, app_version_code)
 
-
-            except requests.exceptions.RequestException as e:
-                st.error(f"Failed to fetch recommendations: {e}")
-
-# Normal mode input flow
-else:
-
-    with st.form("input_form"):
-        st.write("Enter Product Details:")
-
-        col1, col2 = st.columns(2)
-        with col1:
-            catalogOrProduct = st.selectbox("Product/Catalog", ["Product-Id", "Catalog-Id"])
-        with col2:
-            product_id = st.text_input("ID", value="326765744")
-
-        col3, col4 = st.columns(2)
-        with col3:
-            screen = st.selectbox("Select Screen:", ["place_order", "order_details"])
-        with col4:
-            limit = st.text_input("Limit:", value="6")
-
-        col5, col6 = st.columns(2)
-        with col5:
-            user_id = st.text_input("UserId:", value="390374537")
-
-        with col6:
-            # st.write("")  # For alignment
-            # submitted_normal = st.form_submit_button("Submit")
-            st.write("")  # Placeholder to align the button properly
-            submitted = st.markdown(
-                """<style>
-                    div.stButton > button {
-                        width: 200%;
-                        height: 3em;
-                        font-size: 1.2em;
-                        font-weight: bold;
-                    }
-                </style>
-                """,
-                unsafe_allow_html=True
-            )
-            submitted_normal = st.form_submit_button("Submit")
-
-        if submitted_normal:
-            # Make the API call
-            try:
-                data = get_cross_sell_recommendations(int(product_id),user_id, int(limit),screen,catalogOrProduct=="Product-Id")
-                if "recommendations" not in data.keys() and (not data["recommendations"]):
-                    st.error(f"Failed to fetch recommendations or No recommendations for this ID -   RETRY")
-                cross_sell_reco = []
-                cross_sell_reco = get_cross_sell_feed_with_metadata_from_widget(data,user_id)
-                if len(cross_sell_reco)==0:
-                    st.error(f"Failed to fetch recommendations or No recommendations for this ID -   RETRY")
-                else:
-                    display_recommendations(data,cross_sell_reco)
-
-
-            except requests.exceptions.RequestException as e:
-                st.error(f"Failed to fetch recommendations: {e}")
+        except requests.exceptions.RequestException as e:
+            st.error(f"Failed to fetch recommendations: {e}")
+        except Exception as e:
+            st.error(f"An error occurred: {str(e)}")
 

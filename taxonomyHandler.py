@@ -76,8 +76,5 @@ if __name__=="__main__":
     product_id = pids
     try:
         details = fetch_product_details(product_id)
-        catalogs = [i["catalog_id"] for i in details]
-        print(catalogs)
-        # print(details)
     except Exception as e:
         print(e)
