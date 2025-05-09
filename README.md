@@ -56,3 +56,12 @@ streamlit run app.py
 ## License
 
 This project is proprietary and confidential. 
+
+## To Run 
+just initiate env and run in local:
+
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python3 -m  streamlit run app.py
+
