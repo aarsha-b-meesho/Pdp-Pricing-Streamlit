@@ -3,10 +3,10 @@ import requests
 import json
 from collections import defaultdict
 from displayReco import display_recommendations
-from pdpIop import get_catalog_ids
 from taxonomyHandler import fetch_product_details
 from pricing_service import get_pricing_features
 from dataprocessing import process_data
+from reco import get_recommendations
 
 st.set_page_config(
     page_title="PDP Recommendations",
@@ -43,7 +43,7 @@ with st.form("input_form"):
                 st.stop()
 
             # Make the API call and validate responses
-            pdp_data = get_catalog_ids(int(catalog_id))
+            pdp_data = get_recommendations(int(catalog_id),user_id,client_id,20)
             if not pdp_data:
                 raise ValueError("No Recommendation data found for the given Catalog ID.")
 
