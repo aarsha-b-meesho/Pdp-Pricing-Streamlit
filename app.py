@@ -37,16 +37,34 @@ with st.form("input_form"):
 
     if submitted:
         try:
-            # Make the API call
+            # Validate required inputs
+            if not catalog_id.strip() or not user_id.strip():
+                st.warning("Catalog ID and User ID are required.")
+                st.stop()
+
+            # Make the API call and validate responses
             pdp_data = get_catalog_ids(int(catalog_id))
+            if not pdp_data:
+                raise ValueError("No Recommendation data found for the given Catalog ID.")
+
             pricing_data = get_pricing_features(user_id, pdp_data, client_id, user_pincode, app_version_code)
+            if not pricing_data:
+                raise ValueError("Pricing data could not be retrieved.")
+
             taxonmy_data = fetch_product_details(pdp_data)
+            if not taxonmy_data:
+                raise ValueError("Taxonomy data could not be retrieved.")
+
             # Process all data sources and combine features
             data = process_data(pdp_data, pricing_data, taxonmy_data)
+            if not data:
+                raise ValueError("Processed data is empty or invalid.")
+
             display_recommendations(data, catalog_id, user_id, client_id, user_pincode, app_version_code)
 
-        except requests.exceptions.RequestException as e:
-            st.error(f"Failed to fetch recommendations: {e}")
+        except ValueError as ve:
+            st.error(f"Validation error: {ve}")
+        except requests.exceptions.RequestException as re:
+            st.error(f"Network error: {re}")
         except Exception as e:
-            st.error(f"An error occurred: {str(e)}")
-
+            st.error(f"An unexpected error occurred: {str(e)}")
