@@ -15,7 +15,7 @@ def get_pricing_features(user_id, pdp_data, client_id, user_pincode, app_version
     """
     # Create gRPC channel
     channel = grpc.insecure_channel('price-aggregator-go.prd.meesho.int:80')
-    
+
     # Create metadata (headers)
     metadata = [
         ('meesho-user-id', str(user_id)),
@@ -41,12 +41,12 @@ def get_pricing_features(user_id, pdp_data, client_id, user_pincode, app_version
                 type="product_id",
                 value=str(product_id)
             )
-            
+
             # Create EntityId with both keys
             entity_id = pricing_service_pb2.EntityQueries.EntityId(
                 keys=[user_key, product_key]
             )
-            
+
             ids.append(entity_id)
 
         # Create FeatureGroups
@@ -55,7 +55,7 @@ def get_pricing_features(user_id, pdp_data, client_id, user_pincode, app_version
             label="real_time_product_pricing",
             features=["principle_supplier_id", "strike_off_price", "serving_price"]
         )
-        
+
         # Create the complete request
         request = pricing_service_pb2.EntityQueries(
             label="user_product",
@@ -69,7 +69,6 @@ def get_pricing_features(user_id, pdp_data, client_id, user_pincode, app_version
             request=request,
             metadata=metadata
         )
-
         # Process response
         result = {}
         # Check if we got data back
@@ -78,12 +77,13 @@ def get_pricing_features(user_id, pdp_data, client_id, user_pincode, app_version
             for i, _ in enumerate(response.data):
                 if i < len(ids):  # Make sure we have a corresponding id
                     # Find the product_id from the corresponding EntityId
+
                     product_id = None
                     for key in ids[i].keys:
                         if key.type == "product_id":
                             product_id = key.value
                             break
-                    
+
                     if product_id:
                         # Extract features
                         features = {}
@@ -91,9 +91,8 @@ def get_pricing_features(user_id, pdp_data, client_id, user_pincode, app_version
                             features["principle_supplier_id"] = str(response.data[i+1].features[2])
                             features["strike_off_price"] = str(response.data[i+1].features[3])
                             features["serving_price"] = str(response.data[i+1].features[4])
-                        
-                        result[product_id] = features
-        
+
+                        result[response.data[i+1].features[1]] = features
         return result
     except grpc.RpcError as e:
         print(f"gRPC call failed: {e}")
