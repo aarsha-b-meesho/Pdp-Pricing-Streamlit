@@ -1,8 +1,7 @@
 import streamlit as st
 from collections import defaultdict
-from taxonomyHandler import fetch_product_details
 
-def display_recommendations(data, catalog_id, user_id, client_id="ios", user_pincode="110001", app_version_code="1.0.0", limit=16):
+def display_recommendations(parent_pid,parent_pricing_data,parent_taxonomy_data,data, catalog_id, user_id, client_id="ios", user_pincode="110001", app_version_code="1.0.0", limit=16):
     """
     Display product recommendations in Streamlit interface.
     
@@ -246,30 +245,51 @@ def display_recommendations(data, catalog_id, user_id, client_id="ios", user_pin
 
             # Display catalog information with improved styling
             st.markdown(
-                f'<p class="label">Catalog Name</p><p class="value">{parent_metadata.get("catalog_name", "N/A")}</p>',
-                unsafe_allow_html=True,
-            )
-            st.markdown(
                 f'<p class="label">Catalog ID</p><p class="value">{catalog_id}</p>',
                 unsafe_allow_html=True,
             )
-            st.markdown(
-                f'<p class="label">SSCat Name</p><p class="value">{parent_metadata.get("sscat_name", "N/A")}</p>',
-                unsafe_allow_html=True,
-            )
-            st.markdown(
-                f'<p class="label">SSCat ID</p><p class="value">{parent_metadata.get("old_sub_sub_category_id", "N/A")}</p>',
-                unsafe_allow_html=True,
-            )
+
+            # Display parent pricing information
+            if parent_pid:
+                st.markdown(
+                    f'<p class="label">Parent Hero-Pid</p><p class="price">{parent_pid}</p>',
+                    unsafe_allow_html=True,
+                )
+            if parent_pricing_data:
+                if parent_pricing_data.get("serving_price"):
+                    st.markdown(
+                        f'<p class="label">Serving Price</p><p class="price">₹{parent_pricing_data.get("serving_price", "N/A")}</p>',
+                        unsafe_allow_html=True,
+                    )
+                if parent_pricing_data.get("strike_off_price"):
+                    st.markdown(
+                        f'<p class="label">Strike-off Price</p><p class="value">₹{parent_pricing_data.get("strike_off_price", "N/A")}</p>',
+                        unsafe_allow_html=True,
+                    )
+
+                    # Calculate and display discount for parent product
+                    if parent_pricing_data.get("serving_price") and parent_pricing_data.get("strike_off_price"):
+                        try:
+                            serving_price = float(parent_pricing_data.get("serving_price"))
+                            strike_off_price = float(parent_pricing_data.get("strike_off_price"))
+                            if strike_off_price > 0:
+                                discount = round((1 - serving_price / strike_off_price) * 100)
+                                st.markdown(
+                                    f'<p class="label">Discount</p><p class="discount">{discount}% OFF</p>',
+                                    unsafe_allow_html=True,
+                                )
+                        except (ValueError, TypeError):
+                            pass
+
             st.markdown("</div>", unsafe_allow_html=True)
 
         with parent_cols[1]:
-            if parent_metadata.get("product_images"):
+            if parent_taxonomy_data.get("product_images"):
                 st.markdown('<div class="product-card center-content">', unsafe_allow_html=True)
                 st.image(
-                    parent_metadata.get("product_images")[0],
+                    parent_taxonomy_data.get("product_images")[0],
                     width=300,
-                    caption=parent_metadata.get("catalog_name", "")
+                    caption=parent_taxonomy_data.get("catalog_name", "")
                 )
                 st.markdown("</div>", unsafe_allow_html=True)
 
