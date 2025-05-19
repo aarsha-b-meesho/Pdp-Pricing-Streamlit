@@ -1,0 +1,14 @@
+[Unit]
+Description=Pdp Streamlit Application
+After=network.target
+[Service]
+User=boppudi_sai
+WorkingDirectory=/home/boppudi_sai/Pdp-Pricing-Streamlit
+ExecStart=/home/boppudi_sai/Pdp-Pricing-Streamlit/venv/bin/streamlit run app.py --server.port 8097
+Environment="PYTHONPATH=/home/boppudi_sai/Pdp-Pricing-Streamlit"
+Restart=always
+# Logging configuration
+StandardOutput=append:/var/log/pdp-pricing-streamlit/pdp-prcing.log
+StandardError=append:/var/log/pdp-pricing-streamlit/pdp-pricing-error.log
+[Install]
+WantedBy=multi-user.target
