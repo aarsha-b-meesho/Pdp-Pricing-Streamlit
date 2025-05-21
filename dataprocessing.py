@@ -37,15 +37,11 @@ def process_data(pdp_data, pricing_data, taxonomy_data):
                     "catalog_id": catalog_id
                 }
 
-        # Add pricing features
+        # Add pricing features - now including all pricing features
         for product_id in combined_data:
             price_info = pricing_data.get(product_id)
             if price_info:
-                combined_data[product_id]["pricing_features"] = {
-                    "strike_off_price": price_info.get("strike_off_price"),
-                    "serving_price": price_info.get("serving_price"),
-                    "principle_supplier_id": price_info.get("principle_supplier_id")
-                }
+                combined_data[product_id]["pricing_features"] = price_info
 
         # Add taxonomy features
         for product in taxonomy_data:

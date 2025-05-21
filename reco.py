@@ -1,53 +1,57 @@
 import requests
 import json
+import grpc
+from feed_aggregator import api_pb2, api_pb2_grpc
 
-def get_recommendations(catalog_id, user_id,client_id, limit=20, ):
-    """
-    Fetches recommendations for a given catalog ID and user ID.
+def get_recommendations_grpc(catalog_id, user_id, client_id, limit=70):
+    """Fetches recommendations using gRPC for a given catalog ID.
 
     Parameters:
     catalog_id (int): The catalog ID to get recommendations for
-    user_id (int): The user ID
-    limit (int): Number of recommendations to fetch (default: 5)
+    user_id (int): The user ID for the request
+    client_id (str): The client ID for metadata
+    limit (int): Number of recommendations to fetch (default: 70)
 
     Returns:
-    list: List of hero_pids from the recommendations
+    list: List of tuples containing (hero_pid, source) from the recommendations
     """
-    url = "http://rx-fa-recommendations.prd.meesho.int/api/v1/recommendations"
-    
-    headers = {
-        "MEESHO-USER-ID": str(user_id),
-        "APP-USER-ID": str(user_id),
-        "MEESHO-USER-CITY": "Bangalore",
-        "MEESHO_USER_CONTEXT": "logged_in",
-        "MEESHO-CLIENT-ID": str(client_id),
-        "MEESHO-ISO-COUNTRY-CODE": "IN",
-        "Content-Type": "application/json"
-    }
-    
-    payload = {
-        "catalog_id": catalog_id,
-        "user_id": str(user_id),
-        "limit": limit,
-        "sub_sub_category_id": "",
-        "offset": 0
-    }
+    # Create gRPC channel
+    channel = grpc.insecure_channel('feed-aggregator-web.prd.meesho.int:80')
+    stub = api_pb2_grpc.PdpFeedHandlerStub(channel)
+
+    # Create request data
+    request = api_pb2.RecommendationsRequest(
+        catalog_id=catalog_id,
+        limit=limit,
+        offset=0,
+        cursor=""
+    )
+    metadata = [
+        ('meesho-user-id', str(user_id)),
+        ('meesho-user-context', 'logged_in'),
+        ('meesho-client-id', str(client_id)),
+    ]
 
     try:
-        response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status()  # Raise an exception for bad status codes
-        
-        data = response.json()
-        
-        # Extract hero_pids in the same order as they appear in the response
-        hero_pids = [catalog["hero_pid"] for catalog in data.get("catalogs", [])]
-        return hero_pids
-        
-    except requests.exceptions.RequestException as e:
-        print(f"Error making request: {e}")
-        return []
-    except json.JSONDecodeError as e:
-        print(f"Error parsing response: {e}")
+        # Make gRPC call
+        response = stub.FetchPdpFeed(
+            request=request,
+            metadata=metadata
+        )
+
+        # Extract hero_pids and sources from catalogs
+        recommendations = []
+        for catalog in response.catalogs:
+            hero_pid = catalog.hero_pid
+            source = catalog.source
+            id=catalog.id
+            if hero_pid:
+                recommendations.append((hero_pid,id, source))
+
+        return recommendations
+
+    except grpc.RpcError as e:
+        print(f"Error making gRPC request: {e}")
         return []
     except Exception as e:
         print(f"Unexpected error: {e}")
@@ -56,6 +60,13 @@ def get_recommendations(catalog_id, user_id,client_id, limit=20, ):
 if __name__ == "__main__":
     # Example usage
     catalog_id = 55877126
-    user_id = 344572052
-    hero_pids = get_recommendations(catalog_id, user_id)
-    print("Hero PIDs:", hero_pids) 
+    user_id = 12345678
+    client_id = "ios"
+
+    # Get recommendations using gRPC
+    recommendations = get_recommendations_grpc(catalog_id, user_id, client_id)
+    print("Recommendations (hero_pid, source):", recommendations)
+
+    # Optional: implement legacy REST version as needed
+    # hero_pids = get_recommendations(catalog_id, user_id, client_id)
+    # print("Hero PIDs (legacy):", hero_pids)

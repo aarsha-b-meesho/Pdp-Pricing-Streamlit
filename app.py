@@ -7,7 +7,7 @@ from taxonomyHandler import fetch_product_details
 from pricing_service import get_pricing_features
 from dataprocessing import process_data
 from heroPid import get_heroPid
-from reco import get_recommendations
+from reco import get_recommendations_grpc
 
 st.set_page_config(
     page_title="PDP Recommendations",
@@ -18,6 +18,30 @@ st.set_page_config(
 
 # Title
 st.title("PDP Recommendations")
+
+# Define pricing features
+PRICING_FEATURES = [
+    "principle_supplier_id",
+    "serving_price",
+    "strike_off_price",
+    "special_offers_discounted_price",
+    "applied_offers_discount",
+    "applied_offers_discount_percent",
+    "supplier_discount",
+    "supplier_discount_timer_show",
+    "brp_discount",
+    "zonal_discount",
+    "zonal_charge",
+    "cod_discount",
+    "rto_discount",
+    "rto_charge",
+    "delivery_fee_visible",
+    "premium_return_price",
+    "basic_return_price",
+    "free_delivery_visible",
+    "delivery_fee_in_bottom_sheet",
+    "shipping_price"
+]
 
 with st.form("input_form"):
     st.write("Enter Details:")
@@ -33,6 +57,7 @@ with st.form("input_form"):
         user_pincode = st.text_input("User Pincode", value="122001")
     with col3:
         app_version_code = st.text_input("App Version Code", value="685")
+        pricing_features = st.multiselect("Pricing Features", options=PRICING_FEATURES, default=[PRICING_FEATURES[0]])
 
     submitted = st.form_submit_button("Submit", use_container_width=True)
 
@@ -52,7 +77,7 @@ with st.form("input_form"):
                 st.stop()
 
             # Make the API call and validate responses
-            pdp_data = get_recommendations(catalog_id_int, user_id_int, client_id, 20)
+            pdp_data = get_recommendations_grpc(catalog_id_int, user_id_int, client_id, 70)
             if not pdp_data:
                 st.error("No Recommendation data found for the given Catalog ID.")
                 st.stop()
@@ -62,11 +87,8 @@ with st.form("input_form"):
                 st.error("Could not retrieve parent product ID.")
                 st.stop()
 
-            # Add parent PID to the beginning of the list
-            pdp_data.insert(0, parent_pid)
-
             # Get pricing data
-            pricing_data = get_pricing_features(user_id_int, pdp_data, client_id, user_pincode, app_version_code)
+            pricing_data = get_pricing_features(user_id_int,parent_pid, pdp_data, client_id, user_pincode, app_version_code,pricing_features)
             if not pricing_data:
                 st.error("Pricing data could not be retrieved.")
                 st.stop()
@@ -76,7 +98,10 @@ with st.form("input_form"):
             pricing_data.pop(str(parent_pid), None)
 
             # Get taxonomy data
-            taxonomy_data = fetch_product_details(pdp_data)
+            temp_data =[parent_pid]
+            for pid,_,_ in pdp_data:
+                temp_data.append(pid)
+            taxonomy_data = fetch_product_details(temp_data)
             if not taxonomy_data:
                 st.error("Taxonomy data could not be retrieved.")
                 st.stop()
@@ -86,8 +111,8 @@ with st.form("input_form"):
             taxonomy_data = [item for item in taxonomy_data if item.get("product_id") != parent_pid]
 
             # Process all data sources and combine features
-            pdp_data.pop(0)  # Remove parent PID from the list
-            data = process_data(pdp_data, pricing_data, taxonomy_data)
+            temp_data.pop(0)  # Remove parent PID from the list
+            data = process_data(temp_data, pricing_data, taxonomy_data)
             if not data:
                 st.error("Processed data is empty or invalid.")
                 st.stop()

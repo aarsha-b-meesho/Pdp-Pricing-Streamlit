@@ -256,30 +256,30 @@ def display_recommendations(parent_pid,parent_pricing_data,parent_taxonomy_data,
                     unsafe_allow_html=True,
                 )
             if parent_pricing_data:
-                if parent_pricing_data.get("serving_price"):
-                    st.markdown(
-                        f'<p class="label">Serving Price</p><p class="price">₹{parent_pricing_data.get("serving_price", "N/A")}</p>',
-                        unsafe_allow_html=True,
-                    )
-                if parent_pricing_data.get("strike_off_price"):
-                    st.markdown(
-                        f'<p class="label">Strike-off Price</p><p class="value">₹{parent_pricing_data.get("strike_off_price", "N/A")}</p>',
-                        unsafe_allow_html=True,
-                    )
-
-                    # Calculate and display discount for parent product
-                    if parent_pricing_data.get("serving_price") and parent_pricing_data.get("strike_off_price"):
-                        try:
-                            serving_price = float(parent_pricing_data.get("serving_price"))
-                            strike_off_price = float(parent_pricing_data.get("strike_off_price"))
-                            if strike_off_price > 0:
-                                discount = round((1 - serving_price / strike_off_price) * 100)
-                                st.markdown(
-                                    f'<p class="label">Discount</p><p class="discount">{discount}% OFF</p>',
-                                    unsafe_allow_html=True,
-                                )
-                        except (ValueError, TypeError):
-                            pass
+                # Display all pricing features
+                for key, value in parent_pricing_data.items():
+                    if value is not None:  # Only display non-None values
+                        if key in ["serving_price", "strike_off_price", "special_offers_discounted_price"]:
+                            st.markdown(
+                                f'<p class="label">{key.replace("_", " ").title()}</p><p class="price">₹{value}</p>',
+                                unsafe_allow_html=True,
+                            )
+                        elif key in ["applied_offers_discount", "applied_offers_discount_percent", "supplier_discount", 
+                                   "brp_discount", "zonal_discount", "cod_discount", "rto_discount"]:
+                            st.markdown(
+                                f'<p class="label">{key.replace("_", " ").title()}</p><p class="discount">₹{value}</p>',
+                                unsafe_allow_html=True,
+                            )
+                        elif key in ["zonal_charge", "rto_charge", "delivery_fee_visible", "shipping_price"]:
+                            st.markdown(
+                                f'<p class="label">{key.replace("_", " ").title()}</p><p class="value">₹{value}</p>',
+                                unsafe_allow_html=True,
+                            )
+                        else:
+                            st.markdown(
+                                f'<p class="label">{key.replace("_", " ").title()}</p><p class="value">{value}</p>',
+                                unsafe_allow_html=True,
+                            )
 
             st.markdown("</div>", unsafe_allow_html=True)
 
@@ -343,8 +343,7 @@ def display_recommendations(parent_pid,parent_pricing_data,parent_taxonomy_data,
                 "title": taxonomy_features.get("catalog_name", "Product"),
                 "price": pricing_features.get("serving_price", "N/A")
             },
-            "serving_price": pricing_features.get("serving_price", "N/A"),
-            "strike_off_price": pricing_features.get("strike_off_price", "N/A")
+            "pricing_features": pricing_features  # Store all pricing features
         }
         processed_recommendations.append(processed_item)
 
@@ -376,31 +375,31 @@ def display_recommendations(parent_pid,parent_pricing_data,parent_taxonomy_data,
                     unsafe_allow_html=True,
                 )
 
-                # Pricing Information
-                if product.get("serving_price"):
-                    st.markdown(
-                        f'<p class="label">Serving Price</p><p class="price">₹{product.get("serving_price", "N/A")}</p>',
-                        unsafe_allow_html=True,
-                    )
-                if product.get("strike_off_price"):
-                    st.markdown(
-                        f'<p class="label">Strike-off Price</p><p class="value">₹{product.get("strike_off_price", "N/A")}</p>',
-                        unsafe_allow_html=True,
-                    )
-
-                    # Calculate and display discount
-                    if product.get("serving_price") and product.get("strike_off_price"):
-                        try:
-                            serving_price = float(product.get("serving_price"))
-                            strike_off_price = float(product.get("strike_off_price"))
-                            if strike_off_price > 0:
-                                discount = round((1 - serving_price / strike_off_price) * 100)
-                                st.markdown(
-                                    f'<p class="label">Discount</p><p class="discount">{discount}% OFF</p>',
-                                    unsafe_allow_html=True,
-                                )
-                        except (ValueError, TypeError):
-                            pass
+                # Display all pricing features
+                pricing_features = product.get("pricing_features", {})
+                for key, value in pricing_features.items():
+                    if value is not None:  # Only display non-None values
+                        if key in ["serving_price", "strike_off_price", "special_offers_discounted_price"]:
+                            st.markdown(
+                                f'<p class="label">{key.replace("_", " ").title()}</p><p class="price">₹{value}</p>',
+                                unsafe_allow_html=True,
+                            )
+                        elif key in ["applied_offers_discount", "applied_offers_discount_percent", "supplier_discount", 
+                                   "brp_discount", "zonal_discount", "cod_discount", "rto_discount"]:
+                            st.markdown(
+                                f'<p class="label">{key.replace("_", " ").title()}</p><p class="discount">₹{value}</p>',
+                                unsafe_allow_html=True,
+                            )
+                        elif key in ["zonal_charge", "rto_charge", "delivery_fee_visible", "shipping_price"]:
+                            st.markdown(
+                                f'<p class="label">{key.replace("_", " ").title()}</p><p class="value">₹{value}</p>',
+                                unsafe_allow_html=True,
+                            )
+                        else:
+                            st.markdown(
+                                f'<p class="label">{key.replace("_", " ").title()}</p><p class="value">{value}</p>',
+                                unsafe_allow_html=True,
+                            )
 
                 st.markdown("</div>", unsafe_allow_html=True)
 
