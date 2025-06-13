@@ -1,26 +1,40 @@
 import grpc
 from pricing import pricing_service_pb2, pricing_service_pb2_grpc
-from google.protobuf.json_format import MessageToJson
 
-def get_pricing_features(user_id, parent_pid, pdp_data, client_id, user_pincode, app_version_code,pricing_features):
+BATCH_SIZE = 70
+
+def get_pricing_features(user_id, parent_pid, pdp_data, client_id, user_pincode, app_version_code, pricing_features):
     """
-    Fetches pricing features for multiple user ID and product ID pairs using gRPC.
-
-    Parameters:
-    user_id (str): User ID for the request
-    parent_pid (int): Parent product ID
-    pdp_data (list): List of tuples containing (hero_pid, source)
-    client_id (str): Client ID (ios/android)
-    user_pincode (str): User's pincode
-    app_version_code (str): App version code
-
-    Returns:
-    dict: Pricing features from the response mapped by product ID
+    Fetches pricing features for multiple (user_id, product_id) pairs using gRPC in batches of 10.
+    Returns a dictionary: {product_id: {feature_name: feature_value, ...}}
     """
-    # Create gRPC channel
+    all_pids = [parent_pid] + [pid for pid, *_ in pdp_data]
+    results = {}
+
+    # Split into batches of 10
+    for i in range(0, len(all_pids), BATCH_SIZE):
+        batch = all_pids[i:i+BATCH_SIZE]
+
+        # Call the original logic on each batch
+        batch_result = _fetch_pricing_batch(
+            user_id=user_id,
+            product_ids=batch,
+            client_id=client_id,
+            user_pincode=user_pincode,
+            app_version_code=app_version_code,
+            pricing_features=pricing_features
+        )
+        results.update(batch_result)
+
+    return results
+
+
+def _fetch_pricing_batch(user_id, product_ids, client_id, user_pincode, app_version_code, pricing_features):
+    """
+    Internal function to fetch one batch of pricing data via gRPC.
+    """
     channel = grpc.insecure_channel('price-aggregator-go.prd.meesho.int:80')
 
-    # Create metadata (headers)
     metadata = [
         ('meesho-user-id', str(user_id)),
         ('meesho-user-context', 'logged_in'),
@@ -33,92 +47,104 @@ def get_pricing_features(user_id, parent_pid, pdp_data, client_id, user_pincode,
     ]
 
     try:
-        # Create the request message
+        # Prepare IDs
         ids = []
-
-        # Add parent PID first
-        user_key = pricing_service_pb2.EntityQueries.EntityId.EntityKey(
-            type="user_id",
-            value=str(user_id)
-        )
-        product_key = pricing_service_pb2.EntityQueries.EntityId.EntityKey(
-            type="product_id",
-            value=str(parent_pid)
-        )
-        entity_id = pricing_service_pb2.EntityQueries.EntityId(
-            keys=[user_key, product_key]
-        )
-        ids.append(entity_id)
-
-        # Add all hero PIDs from pdp_data
-        for hero_pid,_, _ in pdp_data:
-            user_key = pricing_service_pb2.EntityQueries.EntityId.EntityKey(
-                type="user_id",
-                value=str(user_id)
-            )
-            product_key = pricing_service_pb2.EntityQueries.EntityId.EntityKey(
-                type="product_id",
-                value=str(hero_pid)
-            )
-            entity_id = pricing_service_pb2.EntityQueries.EntityId(
-                keys=[user_key, product_key]
-            )
+        for pid in product_ids:
+            entity_id = pricing_service_pb2.EntityQueries.EntityId(keys=[
+                pricing_service_pb2.EntityQueries.EntityId.EntityKey(type="user_id", value=str(user_id)),
+                pricing_service_pb2.EntityQueries.EntityId.EntityKey(type="product_id", value=str(pid))
+            ])
             ids.append(entity_id)
 
-        # Create FeatureGroups
+        # Feature group
         feature_group = pricing_service_pb2.EntityQueries.FeatureGroups(
             label="real_time_product_pricing",
             features=pricing_features
         )
 
-        # Create the complete request
+        # Full request
         request = pricing_service_pb2.EntityQueries(
             label="user_product",
             ids=ids,
             featureGroups=[feature_group]
         )
 
-        # Create stub and make the call
         stub = pricing_service_pb2_grpc.PricingFeatureRetrievalServiceStub(channel)
-        response = stub.retrieveFeatures(
-            request=request,
-            metadata=metadata
-        )
+        response = stub.retrieveFeatures(request=request, metadata=metadata)
 
-        # Process response
+        # Parse response
         result = {}
-        # Check if we got data back
-        if response.data:
-            # Extract features from each data entry
-            for i, _ in enumerate(response.data):
-                if i < len(ids):  # Make sure we have a corresponding id
-                    # Find the product_id from the corresponding EntityId
-                    product_id = None
-                    for key in ids[i].keys:
-                        if key.type == "product_id":
-                            product_id = key.value
-                            break
+        data = response.data
 
-                    if product_id:
-                        # Extract features
-                        features = {}
-                        j=2
-                        if len(response.data[i+1].features) >= 3:
-                            for feature in pricing_features:
-                                features[feature] = str(response.data[i+1].features[j])
-                                j+=1
-                        result[response.data[i+1].features[1]] = features
+        if not data or len(data) < 2:
+            print("No data received or only headers.")
+            return {}
+
+        headers = data[0].features
+        print("Headers:", headers)
+
+        for row in data[1:]:
+            features = row.features
+            if len(features) != len(headers):
+                print(f"Skipping row due to mismatched lengths: {features}")
+                continue
+
+            feature_map = dict(zip(headers, features))
+            product_id = feature_map.get("product_id")
+
+            if not product_id:
+                print("No product_id found in row; skipping.")
+                continue
+
+            # Remove identifying fields, return only requested features
+            filtered = {
+                k: v for k, v in feature_map.items()
+                if k not in ("user_id", "product_id")
+            }
+
+            result[product_id] = filtered
+
         return result
+
     except grpc.RpcError as e:
-        print(f"gRPC call failed: {e}")
+        print(f"[gRPC Error] {e}")
         return {}
+
     finally:
         channel.close()
 
-if __name__ == "__main__":
-    # Example usage
-    user_id = "100000239"
-    parent_pid = 138858198
-    pdp_data = [(50284666, "source1"), (50284667, "source2")]
-    pricing_features = get_pricing_features(user_id, parent_pid, pdp_data, "ios", "122001", "685")
 
+if __name__ == "__main__":
+    user_id = "326765744"
+    parent_pid = 427274849
+    pdp_data = [
+        (425811861, "source1", ""),
+        (427275225, "source2", ""),
+        (517156785, "source3", ""),
+        (511316437, "source4", ""),
+        (536444742, "source5", ""),
+        (517263786, "source6", ""),
+        (504131719, "source7", ""),
+        (445403301, "source8", ""),
+        (521966460, "source9", ""),
+        (550478849, "source10", ""),
+        (427173453, "source11", ""),
+        (549666653, "source12", ""),
+        (251228364, "source13", "")
+    ]
+
+    pricing_features = ["real_time_product_pricing:principle_supplier_id"]
+
+    result = get_pricing_features(
+        user_id=user_id,
+        parent_pid=parent_pid,
+        pdp_data=pdp_data,
+        client_id="android",
+        user_pincode="560001",
+        app_version_code="685",
+        pricing_features=pricing_features
+    )
+
+    print("\nFinal BATCHED Output:")
+    for pid, features in result.items():
+        print(f"{pid}: {features}")
